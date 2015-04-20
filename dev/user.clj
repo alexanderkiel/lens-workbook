@@ -12,7 +12,7 @@
             [clojure.core.async :as async :refer [chan go go-loop <! <!! >! alts! close!]]
             [lens.schema :as schema]
             [lens.routes :as routes]
-            [lens.api :as api :refer :all]
+            [lens.api :as api]
             [datomic.api :as d]
             [system]
             [lens.util :as util]))
@@ -50,11 +50,21 @@
 (defn connect []
   (d/connect (:db-uri system)))
 
-(defn count-datoms [db]
-  (->> (d/datoms db :eavt)
-       (r/map (constantly 1))
-       (reduce +)))
+(defn load-schema []
+  (schema/load-schema (connect)))
 
 (comment
   (time (count-datoms db)))
 
+(comment
+  (load-schema)
+  (def conn (connect))
+  (api/add-standard-workbook conn)
+
+  (let [db (d/db conn)]
+    (->> (d/q '[:find [?w ...] :where [?w :workbook/id]] db)
+         (map #(d/entity db %))
+         (map :workbook/id)))
+
+  (api/workbook (d/db conn) "")
+  )

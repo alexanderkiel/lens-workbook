@@ -18,15 +18,14 @@
 (defn create-mem-db []
   (let [uri "datomic:mem://lens"]
     (d/create-database uri)
-    (schema/load-base-schema (d/connect uri))
+    (schema/load-schema (d/connect uri))
     uri))
 
 (defn system [env]
   {:app app
    :db-uri (or (env "DB_URI") (create-mem-db))
    :version (System/getProperty "lens.version")
-   :port (or (some-> (env "PORT") (parse-int)) 5002)
-   :mdb-uri (env "MDB_URI")})
+   :port (or (some-> (env "PORT") (parse-int)) 5002)})
 
 (defn start [{:keys [app db-uri version port] :as system}]
   (let [stop-fn (run-server (app db-uri version) {:port port})]
