@@ -1,24 +1,34 @@
 (ns lens.api
-  (:require [datomic.api :as d]
-            [lens.util :refer [uuid? entity?]]))
+  (:require [clojure.core.reducers :as r]
+            [datomic.api :as d]
+            [lens.util :refer [uuid? entity?]]
+            [lens.util :as util]))
 
 ;; ---- Single Accessors ------------------------------------------------------
 
+(defn branch [db id]
+  (d/entity db [:branch/id id]))
+
 (defn workbook [db id]
-  {:pre [(uuid? id)]}
   (d/entity db [:workbook/id id]))
 
 (defn query [db id]
-  {:pre [(uuid? id)]}
   (d/entity db [:query/id id]))
+
+;; ---- Lists -----------------------------------------------------------------
+
+(defn all-branches
+  "Returns a reducible coll of all branches."
+  [db]
+  (->> (d/datoms db :avet :branch/id)
+       (r/map #(d/entity db (:e %)))))
 
 ;; ---- Traversal -------------------------------------------------------------
 
 (defn queries
-  "Returns a seq of all queries of a workbook sorted by rank."
+  "Returns a lazy seq of all queries of a workbook or nil."
   [workbook]
-  (->> (:query/_workbook workbook)
-       (sort-by :query/rank)))
+  (some-> workbook :workbook/queries util/to-seq))
 
 (defn query-cols
   "Returns a seq of all query columns of a query sorted by rank."
@@ -32,14 +42,39 @@
   (->> (:query-cell/_col query)
        (sort-by :query-cell/rank)))
 
-;; ---- Additions/Retractions -------------------------------------------------
+;; ---- Creations -------------------------------------------------------------
 
-(defn add-standard-workbook
-  "Adds a standard workbook with one query and three empty query columns and
-  returns it."
+(defn- create [conn fn]
+  (let [tid (d/tempid :db.part/user)
+        tx-result @(d/transact conn [(fn tid)])
+        db (:db-after tx-result)]
+    (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))
+
+(defn create-standard-workbook
+  "Creates a workbook entity with one query and a default of three empty query
+  cols."
   [conn]
   {:post [(entity? %)]}
   (let [tid (d/tempid :db.part/user)
-        tx-result @(d/transact conn [[:add-standard-workbook tid]])
+        tx-result @(d/transact conn [[:workbook.fn/create-standard tid]])
+        db (:db-after tx-result)]
+    (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))
+
+(defn create-branch
+  "Creates a new branch based on the given workbook."
+  [conn workbook]
+  {:pre [(:workbook/id workbook)]
+   :post [(:branch/id %)]}
+  (create conn (fn [tid] [:workbook.fn/create-branch tid (:db/id workbook)])))
+
+(defn add-query
+  "Creates a new workbook which shares all queries with the old one and adds one
+  new query to it. Returns the new workbook."
+  [conn workbook]
+  {:pre [(entity? workbook)]
+   :post [(entity? %)]}
+  (let [tid (d/tempid :db.part/user)
+        tx-result @(d/transact conn [[:workbook.fn/add-query tid
+                                      (:db/id workbook)]])
         db (:db-after tx-result)]
     (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))

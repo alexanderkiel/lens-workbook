@@ -5,10 +5,12 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [lens.middleware.wan-exception :refer [wrap-exception]]
             [lens.middleware.cors :refer [wrap-cors]]
-            [ring.middleware.format :refer [wrap-restful-format]]))
+            [ring.middleware.format :refer [wrap-restful-format]]
+            [bidi.ring :as bidi-ring]))
 
-(defn app [db-uri version]
-  (-> (routes version)
+(defn app [db-uri _]
+  (-> routes
+      (bidi-ring/make-handler)
       (wrap-exception)
       (wrap-restful-format)
       (wrap-cors)

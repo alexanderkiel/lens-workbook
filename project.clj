@@ -19,7 +19,9 @@
                  [org.apache.curator/curator-framework "2.6.0"
                   :exclusions [io.netty/netty log4j org.slf4j/slf4j-log4j12]]
                  [http-kit "2.1.18"]
-                 [compojure "1.3.3"]
+                 [ring/ring-core "1.3.2"]
+                 [bidi "1.18.10" :exclusions [ring/ring-core]]
+                 [liberator "0.12.2"]
                  [ring-middleware-format "0.5.0"
                   :exclusions [org.clojure/tools.reader
                                com.fasterxml.jackson.core/jackson-core

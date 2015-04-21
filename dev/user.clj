@@ -59,7 +59,9 @@
 (comment
   (load-schema)
   (def conn (connect))
-  (api/add-standard-workbook conn)
+  (api/create-standard-workbook conn)
+  (pst)
+  (d/touch (first (api/queries (d/entity (d/db conn) 17592186045434))))
 
   (let [db (d/db conn)]
     (->> (d/q '[:find [?w ...] :where [?w :workbook/id]] db)
@@ -67,4 +69,5 @@
          (map :workbook/id)))
 
   (api/workbook (d/db conn) "")
+
   )

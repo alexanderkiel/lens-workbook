@@ -1,29 +1,127 @@
 (ns lens.schema
   (:require [datomic.api :as d]))
 
-(def base-schema
+(defmacro func [name doc params code]
+  `{:db/ident ~name
+    :db/doc ~doc
+    :db/fn (d/function '{:lang "clojure" :params ~params :code ~code})})
+
+(def linked-list
+  "Schema of a linked list.
+
+  A empty list has no representation.
+
+  A single element list consists of a entity with one :linked-list/head
+  attribute pointing to the single element with has to be a entity itself.
+  Primitive lists are not supported.
+
+  A list with more than one element contains the additional attribute
+  :linked-list/tail which points to another list entity containing one or more
+  elements recursively."
+  {:attributes
+   [{:db/ident :linked-list/head
+     :db/valueType :db.type/ref
+     :db/cardinality :db.cardinality/one
+     :db/doc "A reference to the head element of a linked list."}
+
+    {:db/ident :linked-list/tail
+     :db/valueType :db.type/ref
+     :db/cardinality :db.cardinality/one
+     :db/doc "A reference to the tail list of a linked list."}]
+
+   :functions
+   [(func :linked-list.fn/cons
+      "Cons function for linked lists. Tid is the tempid of the new list
+      (cons cell)."
+      [_ tid head tail]
+      [(let [e {:db/id tid :linked-list/head head}]
+         (if tail
+           (assoc e :linked-list/tail tail)
+           e))])]})
+
+(def branch
+  [{:db/ident :branch/id
+    :db/valueType :db.type/string
+    :db/unique :db.unique/identity
+    :db/cardinality :db.cardinality/one
+    :db/doc "The identifier of a branch."}
+
+   {:db/ident :branch/workbook
+    :db/valueType :db.type/ref
+    :db/cardinality :db.cardinality/one
+    :db/doc "A reference to the workbook of a branch."}])
+
+(def workbook
+  "Schema of a workbook.
+
+  A workbook is immutable. All updating functions return always a new workbook
+  like operations on normal immutable data structures. The :workbook/parent
+  references the past version of a workbook. One can use the parent to undo a
+  change in a branch. The parent of a newly created workbook using the function
+  :workbook.fn/create is nil.
+
+  A workbook has a linked list of queries. One can use the function
+  :workbook.fn/add-query to add a new query in front of the list."
   {:attributes
    [{:db/ident :workbook/id
-     :db/valueType :db.type/uuid
+     :db/valueType :db.type/string
      :db/unique :db.unique/identity
      :db/cardinality :db.cardinality/one
      :db/doc "The identifier of a workbook."}
 
-    {:db/ident :query/id
-     :db/valueType :db.type/uuid
+    {:db/ident :workbook/parent
+     :db/valueType :db.type/ref
+     :db/cardinality :db.cardinality/one
+     :db/doc "A reference to the parent workbook of the workbook."}
+
+    {:db/ident :workbook/queries
+     :db/valueType :db.type/ref
+     :db/cardinality :db.cardinality/one
+     :db/doc "A reference to a linked list of all queries in the workbook."}]
+
+   :functions
+   [(func :workbook.fn/create
+      "Creates a workbook entity. Takes a tempid for the workbook."
+      [_ tid]
+      [{:db/id tid :workbook/id (str (d/squuid))}])
+
+    (func :workbook.fn/create-branch
+      "Creates branch entity based on the given workbook.
+
+      Takes a tempid for the branch."
+      [db tid workbook]
+      [{:db/id tid :branch/id (str (d/squuid)) :branch/workbook workbook}])
+
+    (func :workbook.fn/add-query
+      "Adds a new query entity to a copy of the given workbook. Needs a tempid
+      for the new workbook."
+      [db tid workbook]
+      (let [list-tid (d/tempid :db.part/user)
+            query-tid (d/tempid :db.part/user)
+            queries (:workbook/queries (d/entity db workbook))]
+        [{:db/id query-tid
+          :query/id (str (d/squuid))}
+         [:linked-list.fn/cons list-tid query-tid (:db/id queries)]
+         {:db/id tid
+          :workbook/id (str (d/squuid))
+          :workbook/parent workbook
+          :workbook/queries list-tid}]))
+
+    (func :workbook.fn/create-standard
+      "Creates a workbook entity with one query and a default of three empty
+      query cols. Takes a tempid for the workbook."
+      [db tid]
+      (let [wb-tid (d/tempid :db.part/user)]
+        [[:workbook.fn/create wb-tid]
+         [:workbook.fn/add-query tid wb-tid]]))]})
+
+(def base-schema
+  {:attributes
+   [{:db/ident :query/id
+     :db/valueType :db.type/string
      :db/unique :db.unique/identity
      :db/cardinality :db.cardinality/one
      :db/doc "The identifier of a query."}
-
-    {:db/ident :query/workbook
-     :db/valueType :db.type/ref
-     :db/cardinality :db.cardinality/one
-     :db/doc "A reference to the workbook of a query."}
-
-    {:db/ident :query/rank
-     :db/valueType :db.type/long
-     :db/cardinality :db.cardinality/one
-     :db/doc "The rank defines the ordering of queries within there workbook."}
 
     {:db/ident :query-col/id
      :db/valueType :db.type/uuid
@@ -71,35 +169,18 @@
                   "form id from lens-warehouse. Its the same id as used in "
                   ":expr of form :lens/query.")}]
    :functions
-   [{:db/id (d/tempid :db.part/user)
-     :db/ident :add-workbook
-     :db/doc "Adds a workbook entity. Needs a tempid."
+   [{:db/ident :add-branch
+     :db/doc (str "Adds a branch entity. Needs a tempid and a reference to its "
+                  "workbook.")
      :db/fn
      (d/function
        '{:lang "clojure"
-         :params [_ tid id]
-         :code [{:db/id tid :workbook/id (d/squuid)}]})}
-    {:db/id (d/tempid :db.part/user)
-     :db/ident :add-query
-     :db/doc (str "Adds a query entity. Needs a tempid and a reference to its "
-                  "workbook. Chooses the next available query rank.")
-     :db/fn
-     (d/function
-       '{:lang "clojure"
-         :params [db tid workbook]
-         :code (let [rank (-> (d/q '[:find (max ?r) .
-                                     :in $ ?w
-                                     :where
-                                     [?q :query/workbook ?w]
-                                     [?q :query/rank ?r]]
-                                   db workbook)
-                              (or 0))]
-                 [{:db/id tid
-                   :query/id (d/squuid)
-                   :query/workbook workbook
-                   :query/rank (inc rank)}])})}
-    {:db/id (d/tempid :db.part/user)
-     :db/ident :add-query-col
+         :params [_ tid workbook]
+         :code [{:db/id tid
+                 :branch/id (str (d/squuid))
+                 :branch/workbook workbook}]})}
+
+    {:db/ident :add-query-col
      :db/doc (str "Adds a query column entity. Needs a tempid and a reference "
                   "to its query. Chooses the next available query column rank.")
      :db/fn
@@ -118,8 +199,7 @@
                    :query-col/query query
                    :query-col/rank (inc rank)}])})}
 
-    {:db/id (d/tempid :db.part/user)
-     :db/ident :add-query-cell
+    {:db/ident :add-query-cell
      :db/fn
      (d/function
        '{:lang "clojure"
@@ -137,41 +217,35 @@
                    :query-cell/type type
                    :query-cell/id id}])})}
 
-    {:db/id (d/tempid :db.part/user)
-     :db/ident :add-standard-workbook
-     :db/doc (str "Adds a new workbook with one query and a default of three "
-                  "empty query cols.")
-     :db/fn
-     (d/function
-       '{:lang "clojure"
-         :params [db tid]
-         :code (let [query-tid (d/tempid :db.part/user)]
-                 [[:add-workbook tid (d/squuid)]
-                  [:add-query query-tid tid]
-                  [:add-query-col (d/tempid :db.part/user) query-tid]
-                  [:add-query-col (d/tempid :db.part/user) query-tid]
-                  [:add-query-col (d/tempid :db.part/user) query-tid]])})}
-
-    {:db/id (d/tempid :db.part/user)
-     :db/ident :retract-query-cell
+    {:db/ident :retract-query-cell
      :db/fn
      (d/function
        '{:lang "clojure"
          :params [_ cell]
          :code [[:db.fn/retractEntity cell]]})}]})
 
-(defn- assoc-db-id [m]
-  (assoc m :db/id (d/tempid :db.part/db)))
+(defn- assoc-tempid [m partition]
+  (assoc m :db/id (d/tempid partition)))
 
 (defn make-attr
   "Assocs :db/id and :db.install/_attribute to the attr map."
   [attr]
-  (-> (assoc-db-id attr)
+  (-> (assoc-tempid attr :db.part/db)
       (assoc :db.install/_attribute :db.part/db)))
 
+(defn make-func
+  "Assocs :db/id to the func map."
+  [func]
+  (assoc-tempid func :db.part/user))
+
 (defn prepare-schema [schema]
-  (-> (mapv make-attr (:attributes schema))
-      (into (:functions schema))))
+  (-> (mapv make-attr (concat (:attributes linked-list)
+                              branch
+                              (:attributes workbook)
+                              (:attributes schema)))
+      (into (map make-func (concat (:functions linked-list)
+                                   (:functions workbook)
+                                   (:functions schema))))))
 
 (defn load-schema
   "Loads the schema in one transaction and derefs the result."
