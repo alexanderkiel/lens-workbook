@@ -5,7 +5,6 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [lens.middleware.wan-exception :refer [wrap-exception]]
             [lens.middleware.cors :refer [wrap-cors]]
-            [ring.middleware.format :refer [wrap-restful-format]]
             [bidi.ring :as bidi-ring]
             [io.clojure.liberator-transit]))
 

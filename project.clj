@@ -23,13 +23,6 @@
                  [bidi "1.18.10" :exclusions [ring/ring-core]]
                  [liberator "0.12.2"]
                  [io.clojure/liberator-transit "0.3.0"]
-                 [ring-middleware-format "0.5.0"
-                  :exclusions [org.clojure/tools.reader
-                               com.fasterxml.jackson.core/jackson-core
-                               com.fasterxml.jackson.core/jackson-annotations
-                               com.fasterxml.jackson.core/jackson-databind
-                               ring/ring-core ring
-                               commons-codec]]
                  [clj-time "0.6.0"]
                  [clj-stacktrace "0.2.7"]
                  [org.slf4j/slf4j-api "1.7.7"]
