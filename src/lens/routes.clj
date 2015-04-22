@@ -84,9 +84,8 @@
      :id (:workbook/id workbook)})
 
   :handle-not-found
-  (fn [_]
-    {:links {:up {:href (service-document-path)}}
-     :error "Workbook not found."}))
+  {:links {:up {:href (service-document-path)}}
+   :error "Workbook not found."})
 
 ;; ---- Create Workbook -------------------------------------------------------
 
@@ -136,9 +135,8 @@
   (fnk [branch] (branch-path branch))
 
   :handle-not-found
-  (fn [_]
-    {:links {:up {:href (service-document-path)}}
-     :error "Workbook not found."}))
+  {:links {:up {:href (service-document-path)}}
+   :error "Workbook not found."})
 
 ;; ---- Add Query -------------------------------------------------------------
 
@@ -220,14 +218,12 @@
      {:lens/update-branch (update-branch-form branch)}})
 
   :handle-not-found
-  (fn [_]
-    {:links {:up {:href (service-document-path)}}
-     :error "Branch not found."})
+  {:links {:up {:href (service-document-path)}}
+   :error "Branch not found."}
 
   :handle-precondition-failed
-  (fn [_]
-    {:links {:up {:href (service-document-path)}}
-     :error "Precondition failed."}))
+  {:links {:up {:href (service-document-path)}}
+   :error "Precondition failed."})
 
 ;; ---- Branch List -----------------------------------------------------------
 
