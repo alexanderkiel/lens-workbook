@@ -246,7 +246,6 @@
   (r/map render-embedded-branch branches))
 
 (defresource branch-list-handler
-  :allowed-methods [:get :post]
   :available-media-types media-types
 
   :handle-ok
@@ -258,12 +257,7 @@
      {:lens/branches
       (->> (api/all-branches db)
            (render-embedded-branches)
-           (into []))}})
-
-  :handle-not-found
-  (fn [_]
-    {:links {:up {:href (service-document-path)}}
-     :error "Branch not found."}))
+           (into []))}}))
 
 ;; ---- Query -----------------------------------------------------------------
 
