@@ -22,6 +22,7 @@
                  [ring/ring-core "1.3.2"]
                  [bidi "1.18.10" :exclusions [ring/ring-core]]
                  [liberator "0.12.2"]
+                 [io.clojure/liberator-transit "0.3.0"]
                  [ring-middleware-format "0.5.0"
                   :exclusions [org.clojure/tools.reader
                                com.fasterxml.jackson.core/jackson-core
@@ -38,6 +39,7 @@
              {:source-paths ["dev"]
               :dependencies [[org.clojure/tools.namespace "0.2.4"]
                              [criterium "0.4.3"]
+                             [compojure "1.3.3"]
                              [cursive/datomic-stubs "0.9.5153" :scope "provided"]]
               :global-vars {*print-length* 20}
               :jvm-opts ["-Xmx4g"]}

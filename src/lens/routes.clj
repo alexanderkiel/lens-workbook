@@ -11,7 +11,8 @@
 (defn path-for [handler & params]
   (apply bidi/path-for routes handler params))
 
-(def media-types ["application/json" "application/edn"])
+(def media-types ["application/json" "application/transit+json"
+                  "application/edn"])
 
 ;; ---- Service Document ------------------------------------------------------
 
@@ -170,18 +171,43 @@
 
 ;; ---- Branch ----------------------------------------------------------------
 
-(declare branch-handler)
+(declare branch-handler update-branch-form)
 
 (defn branch-path [branch]
   (path-for branch-handler :id (:branch/id branch)))
 
+(defn update-branch-form [branch]
+  {:action (branch-path branch)
+   :method "PUT"
+   :title "Update Branch"
+   :description "Updates the branch to point to another workbook."
+   :params
+   {:workbook-id
+    {:type :string
+     :description "The :id of the workbook to put the branch on."}}})
+
 (defresource branch-handler
   :available-media-types media-types
+  :allowed-methods [:get :head :put]
 
   :exists?
   (fnk [[:request [:params db id]]]
     (when-let [branch (api/branch db id)]
       {:branch branch}))
+
+  :etag (fnk [branch] (-> branch :branch/workbook :workbook/id))
+
+  :conflict?
+  (fnk [[:request [:params db workbook-id]]]
+    (not (api/workbook db workbook-id)))
+
+  :put!
+  (fnk [[:request [:params conn db workbook-id]] branch]
+    {:branch (api/update-branch! conn branch (api/workbook db workbook-id))})
+
+  :new? false
+
+  :respond-with-entity? true
 
   :handle-ok
   (fnk [branch]
@@ -191,12 +217,17 @@
       :lens/workbook
       {:href (-> branch :branch/workbook workbook-path)}}
      :forms
-     {}})
+     {:lens/update-branch (update-branch-form branch)}})
 
   :handle-not-found
   (fn [_]
     {:links {:up {:href (service-document-path)}}
-     :error "Branch not found."}))
+     :error "Branch not found."})
+
+  :handle-precondition-failed
+  (fn [_]
+    {:links {:up {:href (service-document-path)}}
+     :error "Precondition failed."}))
 
 ;; ---- Branch List -----------------------------------------------------------
 

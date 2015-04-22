@@ -54,7 +54,7 @@
   "Creates a workbook entity with one query and a default of three empty query
   cols."
   [conn]
-  {:post [(entity? %)]}
+  {:post [(:workbook/id %)]}
   (let [tid (d/tempid :db.part/user)
         tx-result @(d/transact conn [[:workbook.fn/create-standard tid]])
         db (:db-after tx-result)]
@@ -71,10 +71,18 @@
   "Creates a new workbook which shares all queries with the old one and adds one
   new query to it. Returns the new workbook."
   [conn workbook]
-  {:pre [(entity? workbook)]
-   :post [(entity? %)]}
+  {:pre [(:workbook/id workbook)]
+   :post [(:workbook/id %)]}
   (let [tid (d/tempid :db.part/user)
         tx-result @(d/transact conn [[:workbook.fn/add-query tid
                                       (:db/id workbook)]])
         db (:db-after tx-result)]
     (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))
+
+(defn update-branch!
+  "Updates the branch to point to the given workbook.
+
+  Returns the branch based on the new database."
+  [conn branch workbook]
+  (let [r @(d/transact conn [[:db/add (:db/id branch) :branch/workbook (:db/id workbook)]])]
+    (d/entity (:db-after r) (:db/id branch))))

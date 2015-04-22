@@ -6,13 +6,12 @@
             [lens.middleware.wan-exception :refer [wrap-exception]]
             [lens.middleware.cors :refer [wrap-cors]]
             [ring.middleware.format :refer [wrap-restful-format]]
-            [bidi.ring :as bidi-ring]))
+            [bidi.ring :as bidi-ring]
+            [io.clojure.liberator-transit]))
 
 (defn app [db-uri _]
-  (-> routes
-      (bidi-ring/make-handler)
+  (-> (bidi-ring/make-handler routes)
       (wrap-exception)
-      (wrap-restful-format)
       (wrap-cors)
       (wrap-connection db-uri)
       (wrap-keyword-params)
