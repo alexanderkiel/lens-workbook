@@ -114,7 +114,10 @@
   {:action (create-branch-path workbook)
    :method "POST"
    :title "Create A New Branch"
-   :description "The new branch is based on this workbook."})
+   :description "The new branch is based on this workbook."
+   :params
+   {:name {:type :string
+           :description "Name of the branch."}}})
 
 (defresource create-branch-handler
   :available-media-types media-types
@@ -127,16 +130,24 @@
     (when-let [workbook (api/workbook db id)]
       {:workbook workbook}))
 
+  :processable?
+  (fnk [[:request params]]
+    (:name params))
+
   :post!
-  (fnk [[:request [:params conn]] workbook]
-    {:branch (api/create-branch conn workbook)})
+  (fnk [[:request [:params conn name]] workbook]
+    {:branch (api/create-branch conn workbook name)})
 
   :location
   (fnk [branch] (branch-path branch))
 
   :handle-not-found
   {:links {:up {:href (service-document-path)}}
-   :error "Workbook not found."})
+   :error "Workbook not found."}
+
+  :handle-unprocessable-entity
+  {:links {:up {:href (service-document-path)}}
+   :error "Branch name is missing."})
 
 ;; ---- Add Query -------------------------------------------------------------
 
@@ -215,7 +226,8 @@
       :lens/workbook
       {:href (-> branch :branch/workbook workbook-path)}}
      :forms
-     {:lens/update-branch (update-branch-form branch)}})
+     {:lens/update-branch (update-branch-form branch)}
+     :name (:branch/name branch)})
 
   :handle-not-found
   {:links {:up {:href (service-document-path)}}

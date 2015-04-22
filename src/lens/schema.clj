@@ -49,7 +49,11 @@
    {:db/ident :branch/workbook
     :db/valueType :db.type/ref
     :db/cardinality :db.cardinality/one
-    :db/doc "A reference to the workbook of a branch."}])
+    :db/doc "A reference to the workbook of a branch."}
+
+   {:db/ident :branch/name
+    :db/valueType :db.type/string
+    :db/cardinality :db.cardinality/one}])
 
 (def workbook
   "Schema of a workbook.
@@ -89,8 +93,9 @@
       "Creates branch entity based on the given workbook.
 
       Takes a tempid for the branch."
-      [db tid workbook]
-      [{:db/id tid :branch/id (str (d/squuid)) :branch/workbook workbook}])
+      [db tid workbook name]
+      [{:db/id tid :branch/id (str (d/squuid)) :branch/workbook workbook
+        :branch/name name}])
 
     (func :workbook.fn/add-query
       "Adds a new query entity to a copy of the given workbook. Needs a tempid

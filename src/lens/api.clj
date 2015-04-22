@@ -62,10 +62,11 @@
 
 (defn create-branch
   "Creates a new branch based on the given workbook."
-  [conn workbook]
-  {:pre [(:workbook/id workbook)]
+  [conn workbook name]
+  {:pre [(:workbook/id workbook) (string? name)]
    :post [(:branch/id %)]}
-  (create conn (fn [tid] [:workbook.fn/create-branch tid (:db/id workbook)])))
+  (create conn (fn [tid] [:workbook.fn/create-branch tid (:db/id workbook)
+                          name])))
 
 (defn add-query
   "Creates a new workbook which shares all queries with the old one and adds one
@@ -84,5 +85,6 @@
 
   Returns the branch based on the new database."
   [conn branch workbook]
-  (let [r @(d/transact conn [[:db/add (:db/id branch) :branch/workbook (:db/id workbook)]])]
+  (let [r @(d/transact conn [[:db/add (:db/id branch) :branch/workbook
+                              (:db/id workbook)]])]
     (d/entity (:db-after r) (:db/id branch))))
