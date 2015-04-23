@@ -2,7 +2,8 @@
   (:require [clojure.core.reducers :as r]
             [datomic.api :as d]
             [lens.util :refer [uuid? entity?]]
-            [lens.util :as util]))
+            [lens.util :as util])
+  (:import [java.util.concurrent ExecutionException]))
 
 ;; ---- Single Accessors ------------------------------------------------------
 
@@ -80,11 +81,21 @@
         db (:db-after tx-result)]
     (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))
 
+(defn transact [conn tx-data]
+  (try
+    @(d/transact conn tx-data)
+    (catch ExecutionException e (throw (.getCause e)))
+    (catch Exception e (throw e))))
+
 (defn update-branch!
   "Updates the branch to point to the given workbook.
 
-  Returns the branch based on the new database."
-  [conn branch workbook]
-  (let [r @(d/transact conn [[:db/add (:db/id branch) :branch/workbook
-                              (:db/id workbook)]])]
-    (d/entity (:db-after r) (:db/id branch))))
+  Returns the branch based on the new database. Checks that the old workbook is
+  still current - throws a exception with type :lens.schema/precondition-failed
+  if not. Throws :lens.schema/branch-not-found if the branch doesn't exist.
+  Throws :lens.schema/workbook-not-found if the new workbook does not exist.
+  Branch Id is from :branch/id and workbook ids are from :workbook/id."
+  [conn branch-id old-workbook-id new-workbook-id]
+  (let [r (transact conn [[:branch.fn/update branch-id old-workbook-id
+                              new-workbook-id]])]
+    (d/entity (:db-after r) [:branch/id branch-id])))

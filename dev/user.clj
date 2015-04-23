@@ -70,4 +70,6 @@
 
   (api/workbook (d/db conn) "")
 
+  @(d/transact conn [[:workbook.fn/create (d/tempid :db.part/user)]])
+
   )

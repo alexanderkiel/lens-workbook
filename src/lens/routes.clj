@@ -6,13 +6,29 @@
             [liberator.core :refer [defresource]]
             [lens.api :as api]))
 
-(declare routes)
+(def media-types ["application/json" "application/transit+json"
+                  "application/edn"])
+
+;; ---- Routes ----------------------------------------------------------------
+
+(def routes
+  ["/" {"" :service-document-handler
+        "workbooks" :create-workbook-handler
+        ["workbooks/" :id] :workbook-handler
+        ["workbooks/" :id "/create-branch"] :create-branch-handler
+        ["workbooks/" :id "/add-query"] :add-query-handler
+        "branches" :branch-list-handler
+        ["branches/" :id] {:get :get-branch-handler
+                           :put :put-branch-handler}}])
 
 (defn path-for [handler & params]
   (apply bidi/path-for routes handler params))
 
-(def media-types ["application/json" "application/transit+json"
-                  "application/edn"])
+(defn workbook-path [workbook]
+  (path-for :workbook-handler :id (:workbook/id workbook)))
+
+(defn branch-path [branch]
+  (path-for :get-branch-handler :id (:branch/id branch)))
 
 ;; ---- Service Document ------------------------------------------------------
 
@@ -30,36 +46,38 @@
    :method "POST"
    :title "Create A New Workbook"})
 
-(declare service-document-handler)
-
-(defn service-document-path []
-  (path-for service-document-handler))
-
-(declare branch-list-path)
-
 (defresource service-document-handler
   :available-media-types media-types
 
   :handle-ok
   {:name "Lens Workbook"
    :links
-   {:self {:href (service-document-path)}
-    :lens/branches {:href (branch-list-path)}}
+   {:self {:href (path-for :service-document-handler)}
+    :lens/branches {:href (path-for :branch-list-handler)}}
    :forms
    {:lens/find-workbook (find-workbook-form)
     :lens/create-workbook (create-workbook-form)}})
 
 ;; ---- Workbook --------------------------------------------------------------
 
-(declare workbook-handler create-branch-form add-query-form)
-
-(defn workbook-path [workbook]
-  (path-for workbook-handler :id (:workbook/id workbook)))
-
 (defn assoc-parent-link [links workbook]
   (if-let [parent (:workbook/parent workbook)]
     (assoc links :lens/parent {:href (workbook-path parent)})
     links))
+
+(defn create-branch-form [workbook]
+  {:action (path-for :create-branch-handler :id (:workbook/id workbook))
+   :method "POST"
+   :title "Create A New Branch"
+   :description "The new branch is based on this workbook."
+   :params
+   {:name {:type :string
+           :description "Name of the branch."}}})
+
+(defn add-query-form [workbook]
+  {:action (path-for :add-query-handler :id (:workbook/id workbook))
+   :method "POST"
+   :title "Add Query"})
 
 (defresource workbook-handler
   :available-media-types media-types
@@ -72,7 +90,7 @@
   :handle-ok
   (fnk [workbook]
     {:links
-     (-> {:up {:href (path-for service-document-handler)}
+     (-> {:up {:href (path-for :service-document-handler)}
           :self {:href (workbook-path workbook)}
           :lens/queries
           (->> (api/queries workbook)
@@ -84,12 +102,10 @@
      :id (:workbook/id workbook)})
 
   :handle-not-found
-  {:links {:up {:href (service-document-path)}}
+  {:links {:up {:href (path-for :service-document-handler)}}
    :error "Workbook not found."})
 
 ;; ---- Create Workbook -------------------------------------------------------
-
-(declare create-workbook-handler)
 
 (defresource create-workbook-handler
   :allowed-methods [:post]
@@ -104,20 +120,6 @@
   (fnk [workbook] (workbook-path workbook)))
 
 ;; ---- Create Branch ---------------------------------------------------------
-
-(declare create-branch-handler branch-path)
-
-(defn create-branch-path [workbook]
-  (path-for create-branch-handler :id (:workbook/id workbook)))
-
-(defn create-branch-form [workbook]
-  {:action (create-branch-path workbook)
-   :method "POST"
-   :title "Create A New Branch"
-   :description "The new branch is based on this workbook."
-   :params
-   {:name {:type :string
-           :description "Name of the branch."}}})
 
 (defresource create-branch-handler
   :available-media-types media-types
@@ -142,19 +144,14 @@
   (fnk [branch] (branch-path branch))
 
   :handle-not-found
-  {:links {:up {:href (service-document-path)}}
+  {:links {:up {:href (path-for :service-document-handler)}}
    :error "Workbook not found."}
 
   :handle-unprocessable-entity
-  {:links {:up {:href (service-document-path)}}
+  {:links {:up {:href (path-for :service-document-handler)}}
    :error "Branch name is missing."})
 
 ;; ---- Add Query -------------------------------------------------------------
-
-(declare add-query-handler)
-
-(defn add-query-path [workbook]
-  (path-for add-query-handler :id (:workbook/id workbook)))
 
 (defresource add-query-handler
   :allowed-methods [:post]
@@ -173,17 +170,7 @@
   :location
   (fnk [workbook] (workbook-path workbook)))
 
-(defn add-query-form [workbook]
-  {:action (add-query-path workbook)
-   :method "POST"
-   :title "Add Query"})
-
 ;; ---- Branch ----------------------------------------------------------------
-
-(declare branch-handler update-branch-form)
-
-(defn branch-path [branch]
-  (path-for branch-handler :id (:branch/id branch)))
 
 (defn update-branch-form [branch]
   {:action (branch-path branch)
@@ -195,9 +182,9 @@
     {:type :string
      :description "The :id of the workbook to put the branch on."}}})
 
-(defresource branch-handler
+(defresource get-branch-handler
   :available-media-types media-types
-  :allowed-methods [:get :head :put]
+  :allowed-methods [:get]
 
   :exists?
   (fnk [[:request [:params db id]]]
@@ -206,22 +193,10 @@
 
   :etag (fnk [branch] (-> branch :branch/workbook :workbook/id))
 
-  :conflict?
-  (fnk [[:request [:params db workbook-id]]]
-    (not (api/workbook db workbook-id)))
-
-  :put!
-  (fnk [[:request [:params conn db workbook-id]] branch]
-    {:branch (api/update-branch! conn branch (api/workbook db workbook-id))})
-
-  :new? false
-
-  :respond-with-entity? true
-
   :handle-ok
   (fnk [branch]
     {:links
-     {:up {:href (service-document-path)}
+     {:up {:href (path-for :service-document-handler)}
       :self {:href (branch-path branch)}
       :lens/workbook
       {:href (-> branch :branch/workbook workbook-path)}}
@@ -230,19 +205,33 @@
      :name (:branch/name branch)})
 
   :handle-not-found
-  {:links {:up {:href (service-document-path)}}
-   :error "Branch not found."}
+  {:links {:up {:href (path-for :service-document-handler)}}
+   :error "Branch not found."})
 
-  :handle-precondition-failed
-  {:links {:up {:href (service-document-path)}}
-   :error "Precondition failed."})
+(defn decode-etag [etag]
+  (subs etag 1 (dec (count etag))))
+
+(defn error [status msg]
+  {:status status
+   :body
+   {:links {:up {:href (path-for :service-document-handler)}}
+    :error msg}})
+
+(defnk put-branch-handler [[:params conn id] headers :as req]
+  (if-let [new-workbook-id (:workbook-id (:params req))]
+    (if-let [old-workbook-id (some-> (headers "if-match") decode-etag)]
+      (try
+        (api/update-branch! conn id old-workbook-id new-workbook-id)
+        {:status 204}
+        (catch Exception e
+          (condp = (:type (ex-data e))
+            :lens.schema/branch-not-found (error 404 "Branch not found.")
+            :lens.schema/precondition-failed (error 412 "Precondition failed.")
+            :lens.schema/workbook-not-found (error 422 "Workbook doesn't exist."))))
+      (error 428 "Precondition required."))
+    (error 422 "Workbook id is missing.")))
 
 ;; ---- Branch List -----------------------------------------------------------
-
-(declare branch-list-handler)
-
-(defn branch-list-path []
-  (path-for branch-list-handler))
 
 (defn render-embedded-branch [branch]
   {:links
@@ -259,8 +248,8 @@
   :handle-ok
   (fnk [[:request [:params db]]]
     {:links
-     {:up {:href (service-document-path)}
-      :self {:href (branch-list-path)}}
+     {:up {:href (path-for :service-document-handler)}
+      :self {:href (path-for :branch-list-handler)}}
      :embedded
      {:lens/branches
       (->> (api/all-branches db)
@@ -295,13 +284,14 @@
     {:links {:up {:href "/"}}
      :error "Query not found."}))
 
-;; ---- Routes ----------------------------------------------------------------
+;; ---- Handlers --------------------------------------------------------------
 
-(def routes
-  ["/" {"" service-document-handler
-        "workbooks" create-workbook-handler
-        ["workbooks/" :id] workbook-handler
-        ["workbooks/" :id "/create-branch"] create-branch-handler
-        ["workbooks/" :id "/add-query"] add-query-handler
-        "branches" branch-list-handler
-        ["branches/" :id] branch-handler}])
+(def handlers
+  {:service-document-handler service-document-handler
+   :create-workbook-handler create-workbook-handler
+   :workbook-handler workbook-handler
+   :create-branch-handler create-branch-handler
+   :add-query-handler add-query-handler
+   :branch-list-handler branch-list-handler
+   :get-branch-handler get-branch-handler
+   :put-branch-handler put-branch-handler})

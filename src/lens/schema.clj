@@ -40,20 +40,46 @@
            e))])]})
 
 (def branch
-  [{:db/ident :branch/id
-    :db/valueType :db.type/string
-    :db/unique :db.unique/identity
-    :db/cardinality :db.cardinality/one
-    :db/doc "The identifier of a branch."}
+  {:attributes
+   [{:db/ident :branch/id
+     :db/valueType :db.type/string
+     :db/unique :db.unique/identity
+     :db/cardinality :db.cardinality/one
+     :db/doc "The identifier of a branch."}
 
-   {:db/ident :branch/workbook
-    :db/valueType :db.type/ref
-    :db/cardinality :db.cardinality/one
-    :db/doc "A reference to the workbook of a branch."}
+    {:db/ident :branch/workbook
+     :db/valueType :db.type/ref
+     :db/cardinality :db.cardinality/one
+     :db/doc "A reference to the workbook of a branch."}
 
-   {:db/ident :branch/name
-    :db/valueType :db.type/string
-    :db/cardinality :db.cardinality/one}])
+    {:db/ident :branch/name
+     :db/valueType :db.type/string
+     :db/cardinality :db.cardinality/one}]
+   :functions
+   [(func :branch.fn/update
+      "Updates the workbook in the branch.
+      
+      Checks that the old workbook is still current - throws a exception with
+      type ::precondition-failed if not. Throws ::branch-not-found if the branch
+      doesn't exist. Throws ::workbook-not-found if the new workbook does not
+      exist. Branch Id is from :branch/id and workbook ids are from
+      :workbook/id."
+      [db branch-id old-workbook-id new-workbook-id]
+      (if-let [branch (d/entity db [:branch/id branch-id])]
+        (if (= old-workbook-id (:workbook/id (:branch/workbook branch)))
+          (if-let [workbook (d/entity db [:workbook/id new-workbook-id])]
+            [[:db/add (:db/id branch) :branch/workbook (:db/id workbook)]]
+            (throw (ex-info "New workbook not found."
+                            {:type ::workbook-not-found
+                             :workbook-id new-workbook-id
+                             :basis-t (d/basis-t db)})))
+          (throw (ex-info "Old workbook doesn't match."
+                          {:type ::precondition-failed
+                           :workbook-id old-workbook-id
+                           :basis-t (d/basis-t db)})))
+        (throw (ex-info "Branch not found." {:type ::branch-not-found
+                                             :branch-id branch-id
+                                             :basis-t (d/basis-t db)}))))]})
 
 (def workbook
   "Schema of a workbook.
@@ -245,10 +271,11 @@
 
 (defn prepare-schema [schema]
   (-> (mapv make-attr (concat (:attributes linked-list)
-                              branch
+                              (:attributes branch)
                               (:attributes workbook)
                               (:attributes schema)))
       (into (map make-func (concat (:functions linked-list)
+                                   (:functions branch)
                                    (:functions workbook)
                                    (:functions schema))))))
 
