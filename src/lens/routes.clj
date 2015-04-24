@@ -9,6 +9,9 @@
 (def media-types ["application/json" "application/transit+json"
                   "application/edn"])
 
+(defn decode-etag [etag]
+  (subs etag 1 (dec (count etag))))
+
 ;; ---- Routes ----------------------------------------------------------------
 
 (def routes
@@ -23,6 +26,14 @@
 
 (defn path-for [handler & params]
   (apply bidi/path-for routes handler params))
+
+(defn error-body [msg]
+  {:links {:up {:href (path-for :service-document-handler)}}
+   :error msg})
+
+(defn error [status msg]
+  {:status status
+   :body (error-body msg)})
 
 (defn workbook-path [workbook]
   (path-for :workbook-handler :id (:workbook/id workbook)))
@@ -102,8 +113,7 @@
      :id (:workbook/id workbook)})
 
   :handle-not-found
-  {:links {:up {:href (path-for :service-document-handler)}}
-   :error "Workbook not found."})
+  (error-body "Workbook not found."))
 
 ;; ---- Create Workbook -------------------------------------------------------
 
@@ -144,12 +154,10 @@
   (fnk [branch] (branch-path branch))
 
   :handle-not-found
-  {:links {:up {:href (path-for :service-document-handler)}}
-   :error "Workbook not found."}
+  (error-body "Workbook not found.")
 
   :handle-unprocessable-entity
-  {:links {:up {:href (path-for :service-document-handler)}}
-   :error "Branch name is missing."})
+  (error-body "Branch name is missing."))
 
 ;; ---- Add Query -------------------------------------------------------------
 
@@ -205,17 +213,7 @@
      :name (:branch/name branch)})
 
   :handle-not-found
-  {:links {:up {:href (path-for :service-document-handler)}}
-   :error "Branch not found."})
-
-(defn decode-etag [etag]
-  (subs etag 1 (dec (count etag))))
-
-(defn error [status msg]
-  {:status status
-   :body
-   {:links {:up {:href (path-for :service-document-handler)}}
-    :error msg}})
+  (error-body "Branch not found."))
 
 (defnk put-branch-handler [[:params conn id] headers :as req]
   (if-let [new-workbook-id (:workbook-id (:params req))]
