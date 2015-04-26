@@ -1,31 +1,13 @@
-(ns lens.routes
+(ns lens.handler
   (:use plumbing.core)
   (:require [clojure.core.async :refer [timeout]]
             [clojure.core.reducers :as r]
-            [bidi.bidi :as bidi]
             [liberator.core :refer [defresource]]
+            [lens.route :refer [path-for]]
             [lens.api :as api]))
-
-(def media-types ["application/json" "application/transit+json"
-                  "application/edn"])
 
 (defn decode-etag [etag]
   (subs etag 1 (dec (count etag))))
-
-;; ---- Routes ----------------------------------------------------------------
-
-(def routes
-  ["/" {"" :service-document-handler
-        "workbooks" :create-workbook-handler
-        ["workbooks/" :id] :workbook-handler
-        ["workbooks/" :id "/create-branch"] :create-branch-handler
-        ["workbooks/" :id "/add-query"] :add-query-handler
-        "branches" :branch-list-handler
-        ["branches/" :id] {:get :get-branch-handler
-                           :put :put-branch-handler}}])
-
-(defn path-for [handler & params]
-  (apply bidi/path-for routes handler params))
 
 (defn error-body [msg]
   {:links {:up {:href (path-for :service-document-handler)}}
@@ -40,6 +22,10 @@
 
 (defn branch-path [branch]
   (path-for :get-branch-handler :id (:branch/id branch)))
+
+(def resource-defaults
+  {:available-media-types ["application/json" "application/transit+json"
+                           "application/edn"]})
 
 ;; ---- Service Document ------------------------------------------------------
 
@@ -58,7 +44,7 @@
    :title "Create A New Workbook"})
 
 (defresource service-document-handler
-  :available-media-types media-types
+  resource-defaults
 
   :handle-ok
   {:name "Lens Workbook"
@@ -91,7 +77,7 @@
    :title "Add Query"})
 
 (defresource workbook-handler
-  :available-media-types media-types
+  resource-defaults
 
   :exists?
   (fnk [[:request [:params db id]]]
@@ -118,6 +104,8 @@
 ;; ---- Create Workbook -------------------------------------------------------
 
 (defresource create-workbook-handler
+  resource-defaults
+  
   :allowed-methods [:post]
 
   :media-type-available? true
@@ -132,7 +120,8 @@
 ;; ---- Create Branch ---------------------------------------------------------
 
 (defresource create-branch-handler
-  :available-media-types media-types
+  resource-defaults
+
   :allowed-methods [:post]
 
   :can-post-to-missing? false
@@ -162,6 +151,8 @@
 ;; ---- Add Query -------------------------------------------------------------
 
 (defresource add-query-handler
+  resource-defaults
+
   :allowed-methods [:post]
 
   :media-type-available? true
@@ -191,7 +182,8 @@
      :description "The :id of the workbook to put the branch on."}}})
 
 (defresource get-branch-handler
-  :available-media-types media-types
+  resource-defaults
+
   :allowed-methods [:get]
 
   :exists?
@@ -241,7 +233,7 @@
   (r/map render-embedded-branch branches))
 
 (defresource branch-list-handler
-  :available-media-types media-types
+  resource-defaults
 
   :handle-ok
   (fnk [[:request [:params db]]]
@@ -293,3 +285,4 @@
    :branch-list-handler branch-list-handler
    :get-branch-handler get-branch-handler
    :put-branch-handler put-branch-handler})
+

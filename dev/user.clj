@@ -1,21 +1,13 @@
 (ns user
   (:use plumbing.core)
   (:use criterium.core)
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.set :as set]
-            [clojure.pprint :refer [pprint pp]]
+  (:require [clojure.pprint :refer [pprint pp]]
             [clojure.repl :refer :all]
-            [clojure.test :as test]
             [clojure.tools.namespace.repl :refer [refresh]]
-            [clojure.core.reducers :as r]
-            [clojure.core.async :as async :refer [chan go go-loop <! <!! >! alts! close!]]
             [lens.schema :as schema]
-            [lens.routes :as routes]
             [lens.api :as api]
             [datomic.api :as d]
-            [system]
-            [lens.util :as util]))
+            [system]))
 
 (def system nil)
 

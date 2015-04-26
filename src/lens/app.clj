@@ -1,5 +1,6 @@
 (ns lens.app
-  (:require [lens.routes :refer [routes handlers]]
+  (:require [lens.route :refer [routes]]
+            [lens.handler :refer [handlers]]
             [lens.middleware.datomic :refer [wrap-connection]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
