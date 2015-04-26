@@ -1,10 +1,13 @@
 (ns lens.handler
   (:use plumbing.core)
-  (:require [clojure.core.async :refer [timeout]]
+  (:require [clojure.string :as str]
+            [clojure.core.async :refer [<!! timeout]]
             [clojure.core.reducers :as r]
-            [liberator.core :refer [defresource]]
+            [liberator.core :refer [defresource resource]]
+            [liberator.representation :refer [as-response]]
             [lens.route :refer [path-for]]
-            [lens.api :as api]))
+            [lens.api :as api]
+            [lens.oauth2 :as oauth2]))
 
 (defn decode-etag [etag]
   (subs etag 1 (dec (count etag))))
@@ -25,7 +28,18 @@
 
 (def resource-defaults
   {:available-media-types ["application/json" "application/transit+json"
-                           "application/edn"]})
+                           "application/edn"]
+
+   :service-available?
+   (fnk [request]
+     (let [conn (:conn request)
+           db (:db request)]
+       (when conn
+         {:conn conn :db db})))
+
+   ;; Just respond with plain text here because the media type is negotiated
+   ;; later in the decision graph.
+   :handle-unauthorized (fn [{:keys [error]}] (or error "Not authorized."))})
 
 ;; ---- Service Document ------------------------------------------------------
 
@@ -50,7 +64,7 @@
   {:name "Lens Workbook"
    :links
    {:self {:href (path-for :service-document-handler)}
-    :lens/branches {:href (path-for :branch-list-handler)}}
+    :lens/private-workbooks {:href (path-for :private-workbook-list)}}
    :forms
    {:lens/find-workbook (find-workbook-form)
     :lens/create-workbook (create-workbook-form)}})
@@ -80,7 +94,7 @@
   resource-defaults
 
   :exists?
-  (fnk [[:request [:params db id]]]
+  (fnk [db [:request [:params id]]]
     (when-let [workbook (api/workbook db id)]
       {:workbook workbook}))
 
@@ -101,6 +115,46 @@
   :handle-not-found
   (error-body "Workbook not found."))
 
+;; ---- Private Workbooks -----------------------------------------------------
+
+(defn render-embedded-workbook [workbook]
+  {:links
+   {:self {:href (workbook-path workbook)}}})
+
+(defn private-workbook-list [token-introspection-uri]
+  (resource
+    resource-defaults
+
+    :authorized?
+    (fnk [[:request headers]]
+      (if-let [authorization (headers "authorization")]
+        (let [[scheme token] (str/split authorization #" ")]
+          (if (= "bearer" (.toLowerCase scheme))
+            (let [resp (<!! (oauth2/introspect token-introspection-uri token))]
+              (if (:user-info resp)
+                resp
+                [false {:error "Not authorized."}]))
+            [false {:error "Unsupported authentication scheme. Expect Bearer."}]))
+        [false {:error "Not authorized."}]))
+
+    :as-response
+    (fn [d ctx]
+      (let [resp (as-response d ctx)]
+        (if (:error ctx)
+          (assoc-in resp [:headers "www-authenticate"] "Bearer realm=\"Lens\"")
+          resp)))
+
+    :handle-ok
+    (fnk [db [:user-info sub]]
+      {:links
+       {:self {:href (path-for :private-workbook-list)}}
+       :embedded
+       {:lens/workbooks
+        (if-let [user (api/user db sub)]
+          (->> (api/private-workbooks user)
+               (mapv render-embedded-workbook))
+          [])}})))
+
 ;; ---- Create Workbook -------------------------------------------------------
 
 (defresource create-workbook-handler
@@ -111,7 +165,7 @@
   :media-type-available? true
 
   :post!
-  (fnk [[:request [:params conn]]]
+  (fnk [conn]
     {:workbook (api/create-standard-workbook conn)})
 
   :location
@@ -127,7 +181,7 @@
   :can-post-to-missing? false
 
   :exists?
-  (fnk [[:request [:params db id]]]
+  (fnk [db [:request [:params id]]]
     (when-let [workbook (api/workbook db id)]
       {:workbook workbook}))
 
@@ -136,7 +190,7 @@
     (:name params))
 
   :post!
-  (fnk [[:request [:params conn name]] workbook]
+  (fnk [conn [:request [:params name]] workbook]
     {:branch (api/create-branch conn workbook name)})
 
   :location
@@ -158,12 +212,12 @@
   :media-type-available? true
 
   :exists?
-  (fnk [[:request [:params db id]]]
+  (fnk [db [:request [:params id]]]
     (when-let [workbook (api/workbook db id)]
       {:workbook workbook}))
 
   :post!
-  (fnk [[:request [:params conn]] workbook]
+  (fnk [conn workbook]
     {:workbook (api/add-query conn workbook)})
 
   :location
@@ -187,7 +241,7 @@
   :allowed-methods [:get]
 
   :exists?
-  (fnk [[:request [:params db id]]]
+  (fnk [db [:request [:params id]]]
     (when-let [branch (api/branch db id)]
       {:branch branch}))
 
@@ -207,7 +261,7 @@
   :handle-not-found
   (error-body "Branch not found."))
 
-(defnk put-branch-handler [[:params conn id] headers :as req]
+(defnk put-branch-handler [conn [:params id] headers :as req]
   (if-let [new-workbook-id (:workbook-id (:params req))]
     (if-let [old-workbook-id (some-> (headers "if-match") decode-etag)]
       (try
@@ -236,7 +290,7 @@
   resource-defaults
 
   :handle-ok
-  (fnk [[:request [:params db]]]
+  (fnk [db]
     {:links
      {:up {:href (path-for :service-document-handler)}
       :self {:href (path-for :branch-list-handler)}}
@@ -276,10 +330,11 @@
 
 ;; ---- Handlers --------------------------------------------------------------
 
-(def handlers
+(defn handlers [token-introspection-uri]
   {:service-document-handler service-document-handler
    :create-workbook-handler create-workbook-handler
    :workbook-handler workbook-handler
+   :private-workbook-list (private-workbook-list token-introspection-uri)
    :create-branch-handler create-branch-handler
    :add-query-handler add-query-handler
    :branch-list-handler branch-list-handler

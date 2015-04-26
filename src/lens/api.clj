@@ -16,6 +16,9 @@
 (defn query [db id]
   (d/entity db [:query/id id]))
 
+(defn user [db id]
+  (d/entity db [:user/id id]))
+
 ;; ---- Lists -----------------------------------------------------------------
 
 (defn all-branches
@@ -42,6 +45,10 @@
   [query]
   (->> (:query-cell/_col query)
        (sort-by :query-cell/rank)))
+
+(defn private-workbooks [user]
+  {:pre [(:user/id user)]}
+  (:user/private-workbooks user))
 
 ;; ---- Creations -------------------------------------------------------------
 

@@ -146,6 +146,19 @@
         [[:workbook.fn/create wb-tid]
          [:workbook.fn/add-query tid wb-tid]]))]})
 
+(def user
+  {:attributes
+   [{:db/ident :user/id
+     :db/valueType :db.type/string
+     :db/unique :db.unique/identity
+     :db/cardinality :db.cardinality/one
+     :db/doc "The identifier of a user."}
+
+    {:db/ident :user/private-workbooks
+     :db/valueType :db.type/ref
+     :db/cardinality :db.cardinality/many
+     :db/doc "A reference to all private workbooks of a user."}]})
+
 (def base-schema
   {:attributes
    [{:db/ident :query/id
@@ -273,6 +286,7 @@
   (-> (mapv make-attr (concat (:attributes linked-list)
                               (:attributes branch)
                               (:attributes workbook)
+                              (:attributes user)
                               (:attributes schema)))
       (into (map make-func (concat (:functions linked-list)
                                    (:functions branch)

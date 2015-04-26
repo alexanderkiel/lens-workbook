@@ -17,8 +17,9 @@
       {:status 404
        :body {:error "Not Found."}})))
 
-(defn app [db-uri _]
-  (-> (bidi-ring/make-handler routes handlers)
+(defn app [db-uri token-introspection-uri]
+  (-> routes
+      (bidi-ring/make-handler (handlers token-introspection-uri))
       (wrap-not-found)
       (wrap-exception)
       (wrap-restful-format)

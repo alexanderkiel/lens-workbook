@@ -6,6 +6,7 @@
 (def routes
   ["/" {"" :service-document-handler
         "workbooks" :create-workbook-handler
+        "private-workbooks" :private-workbook-list
         ["workbooks/" :id] :workbook-handler
         ["workbooks/" :id "/create-branch"] :create-branch-handler
         ["workbooks/" :id "/add-query"] :add-query-handler

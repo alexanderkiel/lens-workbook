@@ -3,11 +3,11 @@
 
 (defn- assoc-conn
   [request conn]
-  (assoc-in request [:params :conn] conn))
+  (assoc request :conn conn))
 
 (defn- assoc-db
-  [request kw conn]
-  (assoc-in request [:params kw] (d/db conn)))
+  [request conn]
+  (assoc request :db (d/db conn)))
 
 (defn- connect [uri]
   (try
@@ -25,9 +25,9 @@
   (fn [request]
     (let [conn (connect uri)]
       (if (string? conn)
-        {:status 500
+        {:status 503
          :body conn}
         (-> request
             (assoc-conn conn)
-            (assoc-db :db conn)
+            (assoc-db conn)
             (handler))))))

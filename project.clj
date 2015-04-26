@@ -3,10 +3,11 @@
 
   :min-lein-version "2.0.0"
 
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.7.0-beta2"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.3.1"]
                  [org.clojure/tools.logging "0.2.6"]
-                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [prismatic/plumbing "0.4.0"]
                  [slingshot "0.12.2"]
                  [com.datomic/datomic-pro "0.9.5078"

@@ -7,6 +7,10 @@
   "Adds an Access-Control-Allow-Origin header with the value * to responses."
   [handler]
   (fn [request]
-    (-> request
-        (handler)
-        (assoc-header))))
+    (if (= :options (:request-method request))
+      {:status 204
+       :headers {"Access-Control-Allow-Origin" "*"
+                 "Access-Control-Allow-Methods" "GET"
+                 "Access-Control-Allow-Headers" "Authorization, Accept"}}
+      (-> (handler request)
+          (assoc-header)))))
