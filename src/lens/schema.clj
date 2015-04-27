@@ -99,6 +99,10 @@
      :db/cardinality :db.cardinality/one
      :db/doc "The identifier of a workbook."}
 
+    {:db/ident :workbook/name
+     :db/valueType :db.type/string
+     :db/cardinality :db.cardinality/one}
+
     {:db/ident :workbook/parent
      :db/valueType :db.type/ref
      :db/cardinality :db.cardinality/one
@@ -121,7 +125,17 @@
       Takes a tempid for the branch."
       [db tid workbook name]
       [{:db/id tid :branch/id (str (d/squuid)) :branch/workbook workbook
-        :branch/name name}])
+              :branch/name name}])
+
+    (func :workbook.fn/create-private
+      ""
+      [db tid sub name]
+      [{:db/id (d/tempid :db.part/user)
+        :user/id sub
+        :user/private-workbooks tid}
+       {:db/id tid
+        :workbook/id (str (d/squuid))
+        :workbook/name name}])
 
     (func :workbook.fn/add-query
       "Adds a new query entity to a copy of the given workbook. Needs a tempid

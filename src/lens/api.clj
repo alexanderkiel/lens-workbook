@@ -106,3 +106,8 @@
   (let [r (transact conn [[:branch.fn/update branch-id old-workbook-id
                               new-workbook-id]])]
     (d/entity (:db-after r) [:branch/id branch-id])))
+
+(defn create-private-workbook! [conn sub name]
+  {:pre [(string? sub) (string? name)]
+   :post [(:workbook/id %)]}
+  (create conn (fn [tid] [:workbook.fn/create-private tid sub name])))

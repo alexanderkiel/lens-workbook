@@ -90,6 +90,19 @@
    :method "POST"
    :title "Add Query"})
 
+(defn render-workbook [workbook]
+  {:links
+   (-> {:up {:href (path-for :service-document-handler)}
+        :self {:href (workbook-path workbook)}
+        :lens/queries
+        (->> (api/queries workbook)
+             (mapv #(hash-map :href (str "/queries/" (:query/id %)))))}
+       (assoc-parent-link workbook))
+   :forms
+   {:lens/create-branch (create-branch-form workbook)
+    :lens/add-query (add-query-form workbook)}
+   :id (:workbook/id workbook)})
+
 (defresource workbook-handler
   resource-defaults
 
@@ -99,18 +112,7 @@
       {:workbook workbook}))
 
   :handle-ok
-  (fnk [workbook]
-    {:links
-     (-> {:up {:href (path-for :service-document-handler)}
-          :self {:href (workbook-path workbook)}
-          :lens/queries
-          (->> (api/queries workbook)
-               (mapv #(hash-map :href (str "/queries/" (:query/id %)))))}
-         (assoc-parent-link workbook))
-     :forms
-     {:lens/create-branch (create-branch-form workbook)
-      :lens/add-query (add-query-form workbook)}
-     :id (:workbook/id workbook)})
+  (fnk [workbook] (render-workbook workbook))
 
   :handle-not-found
   (error-body "Workbook not found."))
@@ -125,6 +127,8 @@
   (resource
     resource-defaults
 
+    :allowed-methods [:get :post]
+
     :authorized?
     (fnk [[:request headers]]
       (if-let [authorization (headers "authorization")]
@@ -137,6 +141,10 @@
             [false {:error "Unsupported authentication scheme. Expect Bearer."}]))
         [false {:error "Not authorized."}]))
 
+    :processable?
+    (fnk [[:request request-method params] :as ctx]
+      (or (= :get request-method) (:name params)))
+
     :as-response
     (fn [d ctx]
       (let [resp (as-response d ctx)]
@@ -144,16 +152,31 @@
           (assoc-in resp [:headers "www-authenticate"] "Bearer realm=\"Lens\"")
           resp)))
 
+    :post!
+    (fnk [conn [:user-info sub] [:request [:params name]]]
+      {:workbook (api/create-private-workbook! conn sub name)})
+
     :handle-ok
     (fnk [db [:user-info sub]]
       {:links
        {:self {:href (path-for :private-workbook-list)}}
+       :forms
+       {:lens/create
+        {:action (path-for :private-workbook-list)
+         :method "POST"
+         :title "Create A Private Workbook"
+         :params
+         {:name {:type :string
+                 :description "Name of the workbook."}}}}
        :embedded
        {:lens/workbooks
         (if-let [user (api/user db sub)]
           (->> (api/private-workbooks user)
                (mapv render-embedded-workbook))
-          [])}})))
+          [])}})
+
+    :handle-created
+    (fnk [workbook] (render-workbook workbook))))
 
 ;; ---- Create Workbook -------------------------------------------------------
 
