@@ -101,7 +101,8 @@
    :forms
    {:lens/create-branch (create-branch-form workbook)
     :lens/add-query (add-query-form workbook)}
-   :id (:workbook/id workbook)})
+   :id (:workbook/id workbook)
+   :name (:workbook/name workbook)})
 
 (defresource workbook-handler
   resource-defaults
@@ -121,7 +122,9 @@
 
 (defn render-embedded-workbook [workbook]
   {:links
-   {:self {:href (workbook-path workbook)}}})
+   {:self {:href (workbook-path workbook)}}
+   :id (:workbook/id workbook)
+   :name (:workbook/name workbook)})
 
 (defn private-workbook-list [token-introspection-uri]
   (resource
