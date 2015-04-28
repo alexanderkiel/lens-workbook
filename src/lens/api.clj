@@ -1,5 +1,6 @@
 (ns lens.api
   (:require [clojure.core.reducers :as r]
+            [clojure.string :as str]
             [datomic.api :as d]
             [lens.util :refer [uuid? entity?]]
             [lens.util :as util])
@@ -46,9 +47,12 @@
   (->> (:query-cell/_col query)
        (sort-by :query-cell/rank)))
 
-(defn private-workbooks [user]
+(defn private-workbooks
+  "Returns all private worksbooks of the user worted by name"
+  [user]
   {:pre [(:user/id user)]}
-  (:user/private-workbooks user))
+  (->> (:user/private-workbooks user)
+       (sort-by (comp str/lower-case :workbook/name))))
 
 ;; ---- Creations -------------------------------------------------------------
 
