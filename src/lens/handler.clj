@@ -181,21 +181,18 @@
     :handle-created
     (fnk [workbook] (render-workbook workbook))))
 
-;; ---- Create Workbook -------------------------------------------------------
+;; ---- Find Workbook -------------------------------------------------------
 
-(defresource create-workbook-handler
+(defresource find-workbook-handler
   resource-defaults
-  
-  :allowed-methods [:post]
 
-  :media-type-available? true
+  :processable?
+  (fnk [[:request params]]
+    (:id params))
 
-  :post!
-  (fnk [conn]
-    {:workbook (api/create-standard-workbook conn)})
-
-  :location
-  (fnk [workbook] (workbook-path workbook)))
+  :handle-ok
+  (fnk [db [:request [:params id]]]
+    (render-workbook (api/workbook db id))))
 
 ;; ---- Create Branch ---------------------------------------------------------
 
@@ -358,7 +355,7 @@
 
 (defn handlers [token-introspection-uri]
   {:service-document-handler service-document-handler
-   :create-workbook-handler create-workbook-handler
+   :find-workbook-handler find-workbook-handler
    :workbook-handler workbook-handler
    :private-workbook-list (private-workbook-list token-introspection-uri)
    :create-branch-handler create-branch-handler
