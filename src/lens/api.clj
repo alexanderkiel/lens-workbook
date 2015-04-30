@@ -14,6 +14,9 @@
 (defn workbook [db id]
   (d/entity db [:workbook/id id]))
 
+(defn version [db id]
+  (d/entity db [:version/id id]))
+
 (defn query [db id]
   (d/entity db [:query/id id]))
 
@@ -31,21 +34,19 @@
 ;; ---- Traversal -------------------------------------------------------------
 
 (defn queries
-  "Returns a lazy seq of all queries of a workbook or nil."
-  [workbook]
-  (some-> workbook :workbook/queries util/to-seq))
+  "Returns a lazy seq of all queries of a version or nil."
+  [version]
+  (some-> version :version/queries util/to-seq))
 
 (defn query-cols
-  "Returns a seq of all query columns of a query sorted by rank."
+  "Returns a lazy seq of all query columns of a query or nil."
   [query]
-  (->> (:query-col/_query query)
-       (sort-by :query-col/rank)))
+  (some-> query :query/cols util/to-seq reverse))
 
 (defn query-cells
-  "Returns a seq of all query cells of a query column sorted by rank."
-  [query]
-  (->> (:query-cell/_col query)
-       (sort-by :query-cell/rank)))
+  "Returns a lazy seq of all query cells of a query column or nil."
+  [col]
+  (some-> col :query.col/cells util/to-seq reverse))
 
 (defn private-workbooks
   "Returns all private worksbooks of the user worted by name"
@@ -62,54 +63,24 @@
         db (:db-after tx-result)]
     (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))
 
-(defn create-standard-workbook
-  "Creates a workbook entity with one query and a default of three empty query
-  cols."
-  [conn]
-  {:post [(:workbook/id %)]}
-  (let [tid (d/tempid :db.part/user)
-        tx-result @(d/transact conn [[:workbook.fn/create-standard tid]])
-        db (:db-after tx-result)]
-    (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))
-
-(defn create-branch
-  "Creates a new branch based on the given workbook."
-  [conn workbook name]
-  {:pre [(:workbook/id workbook) (string? name)]
-   :post [(:branch/id %)]}
-  (create conn (fn [tid] [:workbook.fn/create-branch tid (:db/id workbook)
-                          name])))
-
-(defn add-query
-  "Creates a new workbook which shares all queries with the old one and adds one
-  new query to it. Returns the new workbook."
-  [conn workbook]
-  {:pre [(:workbook/id workbook)]
-   :post [(:workbook/id %)]}
-  (let [tid (d/tempid :db.part/user)
-        tx-result @(d/transact conn [[:workbook.fn/add-query tid
-                                      (:db/id workbook)]])
-        db (:db-after tx-result)]
-    (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))
-
 (defn transact [conn tx-data]
   (try
     @(d/transact conn tx-data)
     (catch ExecutionException e (throw (.getCause e)))
     (catch Exception e (throw e))))
 
-(defn update-branch!
-  "Updates the branch to point to the given workbook.
+(defn update-workbook!
+  "Updates the workbook to point to the given version.
 
-  Returns the branch based on the new database. Checks that the old workbook is
+  Returns the workbook based on the new database. Checks that the old version is
   still current - throws a exception with type :lens.schema/precondition-failed
-  if not. Throws :lens.schema/branch-not-found if the branch doesn't exist.
-  Throws :lens.schema/workbook-not-found if the new workbook does not exist.
-  Branch Id is from :branch/id and workbook ids are from :workbook/id."
-  [conn branch-id old-workbook-id new-workbook-id]
-  (let [r (transact conn [[:branch.fn/update branch-id old-workbook-id
-                              new-workbook-id]])]
-    (d/entity (:db-after r) [:branch/id branch-id])))
+  if not. Throws :lens.schema/workbook-not-found if the workbook doesn't exist.
+  Throws :lens.schema/version-not-found if the new version does not exist.
+  Workbook Id is from :workbook/id and version ids are from :version/id."
+  [conn workbook-id old-version-id new-version-id]
+  (let [r (transact conn [[:workbook.fn/update workbook-id old-version-id
+                           new-version-id]])]
+    (d/entity (:db-after r) [:workbook/id workbook-id])))
 
 (defn create-private-workbook!
   "Creates a new private workbook with name for the user with id.
@@ -120,3 +91,21 @@
   {:pre [(string? user-id) (string? name)]
    :post [(:workbook/id %)]}
   (create conn (fn [tid] [:workbook.fn/create-private tid user-id name])))
+
+(defn add-query!
+  "Adds a new query to a copy of the given version."
+  [conn version]
+  {:pre [(:version/id version)]
+   :post [(:version/id %)]}
+  (create conn (fn [tid] [:version.fn/add-query tid (:db/id version)])))
+
+(defn add-query-cell!
+  "Adds a new query cell to a copy of the given version.
+
+  Term is a vector of type and id."
+  [conn version query-idx col-idx term]
+  {:pre [(:version/id version) (not (neg? query-idx)) (not (neg? col-idx))
+         (vector? term)]
+   :post [(:version/id %)]}
+  (create conn (fn [tid] [:version.fn/add-query-cell tid (:db/id version)
+                          query-idx col-idx term])))

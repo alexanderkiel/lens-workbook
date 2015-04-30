@@ -2,44 +2,16 @@
   (:use plumbing.core)
   (:require [clojure.string :as str]
             [clojure.core.async :refer [<!! timeout]]
-            [clojure.core.reducers :as r]
             [liberator.core :refer [defresource resource]]
             [liberator.representation :refer [as-response]]
             [lens.route :refer [path-for]]
+            [lens.handler.util :refer :all]
+            [lens.handler.version :as version]
             [lens.api :as api]
             [lens.oauth2 :as oauth2]))
 
-(defn decode-etag [etag]
-  (subs etag 1 (dec (count etag))))
-
-(defn error-body [msg]
-  {:links {:up {:href (path-for :service-document-handler)}}
-   :error msg})
-
-(defn error [status msg]
-  {:status status
-   :body (error-body msg)})
-
 (defn workbook-path [workbook]
-  (path-for :workbook-handler :id (:workbook/id workbook)))
-
-(defn branch-path [branch]
-  (path-for :get-branch-handler :id (:branch/id branch)))
-
-(def resource-defaults
-  {:available-media-types ["application/json" "application/transit+json"
-                           "application/edn"]
-
-   :service-available?
-   (fnk [request]
-     (let [conn (:conn request)
-           db (:db request)]
-       (when conn
-         {:conn conn :db db})))
-
-   ;; Just respond with plain text here because the media type is negotiated
-   ;; later in the decision graph.
-   :handle-unauthorized (fn [{:keys [error]}] (or error "Not authorized."))})
+  (path-for :get-workbook-handler :id (:workbook/id workbook)))
 
 ;; ---- Service Document ------------------------------------------------------
 
@@ -57,66 +29,72 @@
    :method "POST"
    :title "Create A New Workbook"})
 
-(defresource service-document-handler
-  resource-defaults
+(def service-document-handler
+  (resource
+    resource-defaults
 
-  :handle-ok
-  {:name "Lens Workbook"
-   :links
-   {:self {:href (path-for :service-document-handler)}
-    :lens/private-workbooks {:href (path-for :private-workbook-list)}}
-   :forms
-   {:lens/find-workbook (find-workbook-form)
-    :lens/create-workbook (create-workbook-form)}})
+    :handle-ok
+    {:name "Lens Workbook"
+     :links
+     {:self {:href (path-for :service-document-handler)}
+      :lens/private-workbooks {:href (path-for :private-workbook-list)}}
+     :forms
+     {:lens/find-workbook (find-workbook-form)
+      :lens/create-workbook (create-workbook-form)}}))
 
 ;; ---- Workbook --------------------------------------------------------------
 
-(defn assoc-parent-link [links workbook]
-  (if-let [parent (:workbook/parent workbook)]
-    (assoc links :lens/parent {:href (workbook-path parent)})
-    links))
-
-(defn create-branch-form [workbook]
-  {:action (path-for :create-branch-handler :id (:workbook/id workbook))
-   :method "POST"
-   :title "Create A New Branch"
-   :description "The new branch is based on this workbook."
+(defn update-workbook-form [workbook]
+  {:action (workbook-path workbook)
+   :method "PUT"
+   :title "Update Workbook"
+   :description "Updates the workbook to point to another version."
    :params
-   {:name {:type :string
-           :description "Name of the branch."}}})
-
-(defn add-query-form [workbook]
-  {:action (path-for :add-query-handler :id (:workbook/id workbook))
-   :method "POST"
-   :title "Add Query"})
+   {:version-id
+    {:type :string
+     :description "The :id of the version to put the workbook on."}}})
 
 (defn render-workbook [workbook]
   {:links
-   (-> {:up {:href (path-for :service-document-handler)}
-        :self {:href (workbook-path workbook)}
-        :lens/queries
-        (->> (api/queries workbook)
-             (mapv #(hash-map :href (str "/queries/" (:query/id %)))))}
-       (assoc-parent-link workbook))
+   {:up {:href (path-for :service-document-handler)}
+    :self {:href (workbook-path workbook)}
+    :lens/head {:href (version/path (:workbook/head workbook))}}
    :forms
-   {:lens/create-branch (create-branch-form workbook)
-    :lens/add-query (add-query-form workbook)}
+   {:lens/update-workbook (update-workbook-form workbook)}
    :id (:workbook/id workbook)
    :name (:workbook/name workbook)})
 
-(defresource workbook-handler
-  resource-defaults
+(def get-workbook-handler
+  (resource
+    resource-defaults
 
-  :exists?
-  (fnk [db [:request [:params id]]]
-    (when-let [workbook (api/workbook db id)]
-      {:workbook workbook}))
+    :exists?
+    (fnk [db [:request [:params id]]]
+      (when-let [workbook (api/workbook db id)]
+        {:workbook workbook}))
 
-  :handle-ok
-  (fnk [workbook] (render-workbook workbook))
+    :etag (fnk [workbook] (-> workbook :workbook/head :version/id))
 
-  :handle-not-found
-  (error-body "Workbook not found."))
+    :handle-ok
+    (fnk [workbook] (render-workbook workbook))
+
+    :handle-not-found
+    (error-body "Workbook not found.")))
+
+(defnk put-workbook-handler [conn [:params id] headers :as req]
+  (if-let [new-version-id (:version-id (:params req))]
+    (if-let [old-version-id (some-> (headers "if-match") decode-etag)]
+      (try
+        (let [wb (api/update-workbook! conn id old-version-id new-version-id)]
+          {:status 204
+           :headers {"etag" (str "\"" (:version/id (:workbook/head wb)) "\"")}})
+        (catch Exception e
+          (condp = (:type (ex-data e))
+            :lens.schema/workbook-not-found (error 404 "Workbook not found.")
+            :lens.schema/precondition-failed (error 412 "Precondition failed.")
+            :lens.schema/version-not-found (error 422 "Version doesn't exist."))))
+      (error 428 "Precondition required."))
+    (error 422 "Version id is missing.")))
 
 ;; ---- Private Workbooks -----------------------------------------------------
 
@@ -149,7 +127,7 @@
         [false {:error "Not authorized."}]))
 
     :processable?
-    (fnk [[:request request-method params] :as ctx]
+    (fnk [[:request request-method params]]
       (or (= :get request-method) (:name params)))
 
     :as-response
@@ -187,152 +165,36 @@
 
 ;; ---- Find Workbook -------------------------------------------------------
 
-(defresource find-workbook-handler
-  resource-defaults
+(def find-workbook-handler
+  (resource
+    resource-defaults
 
-  :processable?
-  (fnk [[:request params]]
-    (:id params))
+    :processable?
+    (fnk [[:request params]]
+      (:id params))
 
-  :handle-ok
-  (fnk [db [:request [:params id]]]
-    (render-workbook (api/workbook db id))))
+    :exists?
+    (fnk [db [:request [:params id]]]
+      (when-let [workbook (api/workbook db id)]
+        {:workbook workbook}))
 
-;; ---- Add Query -------------------------------------------------------------
+    :etag (fnk [workbook] (-> workbook :workbook/head :version/id))
 
-(defresource add-query-handler
-  resource-defaults
+    :handle-ok
+    (fnk [workbook] (render-workbook workbook))
 
-  :allowed-methods [:post]
-
-  :media-type-available? true
-
-  :exists?
-  (fnk [db [:request [:params id]]]
-    (when-let [workbook (api/workbook db id)]
-      {:workbook workbook}))
-
-  :post!
-  (fnk [conn workbook]
-    {:workbook (api/add-query conn workbook)})
-
-  :location
-  (fnk [workbook] (workbook-path workbook)))
-
-;; ---- Branch ----------------------------------------------------------------
-
-(defn update-branch-form [branch]
-  {:action (branch-path branch)
-   :method "PUT"
-   :title "Update Branch"
-   :description "Updates the branch to point to another workbook."
-   :params
-   {:workbook-id
-    {:type :string
-     :description "The :id of the workbook to put the branch on."}}})
-
-(defresource get-branch-handler
-  resource-defaults
-
-  :allowed-methods [:get]
-
-  :exists?
-  (fnk [db [:request [:params id]]]
-    (when-let [branch (api/branch db id)]
-      {:branch branch}))
-
-  :etag (fnk [branch] (-> branch :branch/workbook :workbook/id))
-
-  :handle-ok
-  (fnk [branch]
-    {:links
-     {:up {:href (path-for :service-document-handler)}
-      :self {:href (branch-path branch)}
-      :lens/workbook
-      {:href (-> branch :branch/workbook workbook-path)}}
-     :forms
-     {:lens/update-branch (update-branch-form branch)}
-     :name (:branch/name branch)})
-
-  :handle-not-found
-  (error-body "Branch not found."))
-
-(defnk put-branch-handler [conn [:params id] headers :as req]
-  (if-let [new-workbook-id (:workbook-id (:params req))]
-    (if-let [old-workbook-id (some-> (headers "if-match") decode-etag)]
-      (try
-        (api/update-branch! conn id old-workbook-id new-workbook-id)
-        {:status 204}
-        (catch Exception e
-          (condp = (:type (ex-data e))
-            :lens.schema/branch-not-found (error 404 "Branch not found.")
-            :lens.schema/precondition-failed (error 412 "Precondition failed.")
-            :lens.schema/workbook-not-found (error 422 "Workbook doesn't exist."))))
-      (error 428 "Precondition required."))
-    (error 422 "Workbook id is missing.")))
-
-;; ---- Branch List -----------------------------------------------------------
-
-(defn render-embedded-branch [branch]
-  {:links
-   {:self {:href (branch-path branch)}
-    :lens/workbook {:href (workbook-path (:branch/workbook branch))}}
-   :id (:branch/id branch)})
-
-(defn render-embedded-branches [branches]
-  (r/map render-embedded-branch branches))
-
-(defresource branch-list-handler
-  resource-defaults
-
-  :handle-ok
-  (fnk [db]
-    {:links
-     {:up {:href (path-for :service-document-handler)}
-      :self {:href (path-for :branch-list-handler)}}
-     :embedded
-     {:lens/branches
-      (->> (api/all-branches db)
-           (render-embedded-branches)
-           (into []))}}))
-
-;; ---- Query -----------------------------------------------------------------
-
-(defn render-embedded-query-cell [cell]
-  {:links
-   {:self {:href (str "/query-cells/" (:query-cell/id cell))}}
-   :type (:query-cell.term/type cell)
-   :id (:query-cell.term/id cell)})
-
-(defn render-embedded-query-col [col]
-  {:links
-   {:self {:href (str "/query-cols/" (:query-col/id col))}}
-   :embedded
-   {:lens/query-cells
-    (->> (api/query-cells col)
-         (mapv #(render-embedded-query-cell %)))}})
-
-(defn query [db id]
-  (if-let [query (api/query db id)]
-    {:links
-     {:up {:href (str "/workbooks/" (-> query :query/workbook :workbook/id))}
-      :self {:href (str "/queries/" (:query/id query))}}
-     :embedded
-     {:lens/query-cols
-      (->> (api/query-cols query)
-           (mapv #(render-embedded-query-col %)))}}
-    {:links {:up {:href "/"}}
-     :error "Query not found."}))
+    :handle-not-found
+    (error-body "Workbook not found.")))
 
 ;; ---- Handlers --------------------------------------------------------------
 
 (defn handlers [token-introspection-uri]
   {:service-document-handler service-document-handler
    :find-workbook-handler find-workbook-handler
-   :workbook-handler workbook-handler
-   :private-workbook-list (private-workbook-list token-introspection-uri)
-   :add-query-handler add-query-handler
-   :branch-list-handler branch-list-handler
-   :get-branch-handler get-branch-handler
-   :put-branch-handler put-branch-handler})
+   :get-workbook-handler get-workbook-handler
+   :put-workbook-handler put-workbook-handler
+   :version-handler version/handler
+   :add-query-handler version/add-query-handler
+   :add-query-cell-handler version/add-query-cell-handler
+   :private-workbook-list (private-workbook-list token-introspection-uri)})
 

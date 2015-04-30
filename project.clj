@@ -8,7 +8,7 @@
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.3.1"]
                  [org.clojure/tools.logging "0.2.6"]
-                 [prismatic/plumbing "0.4.0"]
+                 [prismatic/plumbing "0.4.2"]
                  [slingshot "0.12.2"]
                  [com.datomic/datomic-pro "0.9.5078"
                   :exclusions [org.slf4j/slf4j-nop
