@@ -1,10 +1,12 @@
 (ns lens.schema
-  (:require [datomic.api :as d]))
+  (:require [datomic.api :as d]
+            [lens.util :as util]))
 
 (defmacro func [name doc params code]
   `{:db/ident ~name
     :db/doc ~doc
-    :db/fn (d/function '{:lang "clojure" :params ~params :code ~code})})
+    :db/fn (d/function '{:lang "clojure" :requires [[shortid.core :as shortid]]
+                         :params ~params :code ~code})})
 
 (def linked-list
   "Schema of a linked list.
@@ -103,10 +105,10 @@
      :db/valueType :db.type/string
      :db/cardinality :db.cardinality/one}
 
-    {:db/ident :workbook/parent
+    {:db/ident :workbook/head
      :db/valueType :db.type/ref
      :db/cardinality :db.cardinality/one
-     :db/doc "A reference to the parent workbook of the workbook."}
+     :db/doc "A reference to the most recent version of the workbook."}
 
     {:db/ident :workbook/queries
      :db/valueType :db.type/ref
@@ -125,17 +127,29 @@
       Takes a tempid for the branch."
       [db tid workbook name]
       [{:db/id tid :branch/id (str (d/squuid)) :branch/workbook workbook
-              :branch/name name}])
+        :branch/name name}])
+
+    (func :find-unique
+      ""
+      [db attr id-gen]
+      (first (drop-while #(d/entity db [attr %]) (repeatedly id-gen))))
 
     (func :workbook.fn/create-private
-      ""
-      [db tid sub name]
-      [{:db/id (d/tempid :db.part/user)
-        :user/id sub
-        :user/private-workbooks tid}
-       {:db/id tid
-        :workbook/id (str (d/squuid))
-        :workbook/name name}])
+      "Creates a new private workbook with name for the user with id.
+
+      Creates the user if it does not exist. The new workbook will have one initial
+      version with one query in it."
+      [db tid user-id name]
+      (let [version-tid (d/tempid :db.part/user)]
+        [{:db/id (d/tempid :db.part/user)
+          :user/id user-id
+          :user/private-workbooks tid}
+         {:db/id version-tid
+          :version/id (str (d/squuid))}
+         {:db/id tid
+          :workbook/id (d/invoke db :find-unique db :workbook/id #(shortid.core/generate 5))
+          :workbook/name name
+          :workbook/head version-tid}]))
 
     (func :workbook.fn/add-query
       "Adds a new query entity to a copy of the given workbook. Needs a tempid
@@ -159,6 +173,14 @@
       (let [wb-tid (d/tempid :db.part/user)]
         [[:workbook.fn/create wb-tid]
          [:workbook.fn/add-query tid wb-tid]]))]})
+
+(def version
+  {:attributes
+   [{:db/ident :version/id
+     :db/valueType :db.type/string
+     :db/unique :db.unique/identity
+     :db/cardinality :db.cardinality/one
+     :db/doc "The identifier of a user."}]})
 
 (def user
   {:attributes
@@ -300,6 +322,7 @@
   (-> (mapv make-attr (concat (:attributes linked-list)
                               (:attributes branch)
                               (:attributes workbook)
+                              (:attributes version)
                               (:attributes user)
                               (:attributes schema)))
       (into (map make-func (concat (:functions linked-list)

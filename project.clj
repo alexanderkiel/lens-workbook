@@ -31,6 +31,7 @@
                                com.fasterxml.jackson.core/jackson-databind
                                ring/ring-core ring
                                commons-codec]]
+                 [shortid "0.1-SNAPSHOT"]
                  [clj-time "0.6.0"]
                  [clj-stacktrace "0.2.7"]
                  [org.slf4j/slf4j-api "1.7.7"]

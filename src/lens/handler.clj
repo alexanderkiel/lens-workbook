@@ -126,7 +126,11 @@
    :id (:workbook/id workbook)
    :name (:workbook/name workbook)})
 
-(defn private-workbook-list [token-introspection-uri]
+(defn private-workbook-list
+  "List of all private workbooks of a user.
+
+  Requires authentication. Also used to create a new private workbook."
+  [token-introspection-uri]
   (resource
     resource-defaults
 
@@ -193,37 +197,6 @@
   :handle-ok
   (fnk [db [:request [:params id]]]
     (render-workbook (api/workbook db id))))
-
-;; ---- Create Branch ---------------------------------------------------------
-
-(defresource create-branch-handler
-  resource-defaults
-
-  :allowed-methods [:post]
-
-  :can-post-to-missing? false
-
-  :exists?
-  (fnk [db [:request [:params id]]]
-    (when-let [workbook (api/workbook db id)]
-      {:workbook workbook}))
-
-  :processable?
-  (fnk [[:request params]]
-    (:name params))
-
-  :post!
-  (fnk [conn [:request [:params name]] workbook]
-    {:branch (api/create-branch conn workbook name)})
-
-  :location
-  (fnk [branch] (branch-path branch))
-
-  :handle-not-found
-  (error-body "Workbook not found.")
-
-  :handle-unprocessable-entity
-  (error-body "Branch name is missing."))
 
 ;; ---- Add Query -------------------------------------------------------------
 
@@ -358,7 +331,6 @@
    :find-workbook-handler find-workbook-handler
    :workbook-handler workbook-handler
    :private-workbook-list (private-workbook-list token-introspection-uri)
-   :create-branch-handler create-branch-handler
    :add-query-handler add-query-handler
    :branch-list-handler branch-list-handler
    :get-branch-handler get-branch-handler

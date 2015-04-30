@@ -111,7 +111,12 @@
                               new-workbook-id]])]
     (d/entity (:db-after r) [:branch/id branch-id])))
 
-(defn create-private-workbook! [conn sub name]
-  {:pre [(string? sub) (string? name)]
+(defn create-private-workbook!
+  "Creates a new private workbook with name for the user with id.
+
+  Creates the user if it does not exist. The new workbook will have one initial
+  version with one query in it."
+  [conn user-id name]
+  {:pre [(string? user-id) (string? name)]
    :post [(:workbook/id %)]}
-  (create conn (fn [tid] [:workbook.fn/create-private tid sub name])))
+  (create conn (fn [tid] [:workbook.fn/create-private tid user-id name])))
