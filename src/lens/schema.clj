@@ -280,7 +280,7 @@
                    cells new-cell-seq
                    tx-data [{:db/id new-col :query.col/cells tid}]]
               (if (next cells)
-                (let [next-tid #db/id[:db.part/user]]
+                (let [next-tid (d/tempid :db.part/user)]
                   (recur
                     next-tid
                     (rest cells)
