@@ -228,11 +228,6 @@
             new-cells #db/id[:db.part/user]
             new-cell #db/id[:db.part/user]]
 
-        (println (format "query[%d] :" query-idx)
-                 (:query/name query)
-                 (format "#cols = %d", (count (seq cols))))
-        (println (format "col[%d]   :" col-idx)
-                 (format "#cells = %d", (count (seq (:query.col/cells col)))))
         [[:version.fn/create tid version new-queries]
 
          ;; Create a new query which holds the new col list
@@ -247,7 +242,51 @@
          {:db/id new-cell
           :query.cell.term/type (first term)
           :query.cell.term/id (second term)}
-         [:l.fn/cons new-cells new-cell (:db/id (:query.col/cells col))]]))]})
+         [:l.fn/cons new-cells new-cell (:db/id (:query.col/cells col))]]))
+
+    (func :version.fn/remove-query-cell
+      "Removes a query cell from a copy of the given version.
+      
+      Needs a tempid for the new version."
+      [db tid version query-idx col-idx term-id]
+      (let [seq (fn seq [l] (when l (cons (:l/head l) (seq (:l/tail l)))))
+
+            queries (:version/queries (d/entity db version))
+            query (nth (seq queries) query-idx)
+
+            cols (:query/cols query)
+            col (nth (seq cols) col-idx)
+
+            new-cell-seq (->> (seq (:query.col/cells col))
+                              (remove #(= term-id (:query.cell.term/id %))))
+
+            new-queries #db/id[:db.part/user]
+            new-query #db/id[:db.part/user]
+            new-cols #db/id[:db.part/user]
+            new-col #db/id[:db.part/user]]
+
+        (into
+          [[:version.fn/create tid version new-queries]
+
+           ;; Create a new query which holds the new col list
+           {:db/id new-query :query/cols new-cols}
+           [:l.fn/update new-queries (:db/id queries) query-idx new-query]
+
+           ;; Create a new col which holds the new cell list
+           [:l.fn/update new-cols (:db/id cols) col-idx new-col]]
+          (if (empty? new-cell-seq)
+            [[:query.col.fn/create new-col]]
+            (loop [tid #db/id[:db.part/user]
+                   cells new-cell-seq
+                   tx-data [{:db/id new-col :query.col/cells tid}]]
+              (if (next cells)
+                (let [next-tid #db/id[:db.part/user]]
+                  (recur
+                    next-tid
+                    (rest cells)
+                    (conj tx-data [:l.fn/cons tid (:db/id (first cells))
+                                   next-tid])))
+                (conj tx-data [:l.fn/cons tid (:db/id (first cells)) nil])))))))]})
 
 (def query
   {:attributes
@@ -336,6 +375,11 @@
   (-> (assoc-tempid attr :db.part/db)
       (assoc :db.install/_attribute :db.part/db)))
 
+(defn make-enum
+  "Assocs :db/id to the enum map."
+  [enum]
+  (assoc-tempid {:db/ident enum} :db.part/user))
+
 (defn make-func
   "Assocs :db/id to the func map."
   [func]
@@ -347,6 +391,7 @@
                               (:attributes version)
                               (:attributes query)
                               (:attributes user)))
+      (into (map make-enum (:enums linked-list)))
       (into (map make-func (concat (:functions linked-list)
                                    (:functions workbook)
                                    (:functions version)

@@ -16,11 +16,11 @@
         (mapv #(render-query-cell %)))})
 
 (defn render-query [query]
-  {:name (:query/name query)
-   :query-grid
-   {:cols
-    (->> (api/query-cols query)
-         (mapv #(render-query-col %)))}})
+  (-> {:query-grid
+       {:cols
+        (->> (api/query-cols query)
+             (mapv #(render-query-col %)))}}
+      (assoc-when :name (:query/name query))))
 
 (defn path [version]
   (path-for :version-handler :id (:version/id version)))
@@ -53,6 +53,21 @@
     {:type :string
      :description "The id of the term (like T00001 or T00001_F0001)."}}})
 
+(defn remove-query-cell-form [version]
+  {:action (path-for :remove-query-cell-handler :id (:version/id version))
+   :method "POST"
+   :title "Remove Query Cell"
+   :params
+   {:query-idx
+    {:type :long
+     :description "The index of the query in the list of queries."}
+    :col-idx
+    {:type :long
+     :description "The index of the column in the list of columns of the query identified by query-idx."}
+    :term-id
+    {:type :string
+     :description "The id of the term (like T00001 or T00001_F0001)."}}})
+
 (defn render-version-head [version]
   {:links
    (-> {:up {:href (path-for :service-document-handler)}
@@ -60,7 +75,8 @@
        (assoc-parent-link version))
    :forms
    {:lens/add-query (add-query-form version)
-    :lens/add-query-cell (add-query-cell-form version)}
+    :lens/add-query-cell (add-query-cell-form version)
+    :lens/remove-query-cell (remove-query-cell-form version)}
    :id (:version/id version)})
 
 (defn render-version [version]
@@ -130,3 +146,20 @@
       {:version (api/add-query-cell! conn version (util/parse-int query-idx)
                                      (util/parse-int col-idx)
                                      [(keyword term-type) term-id])})))
+
+(def remove-query-cell-handler
+  (resource
+    post-resource-defaults
+
+    :processable?
+    (fnk [[:request params]]
+      (and (:query-idx params) (:col-idx params)
+           (:term-id params)
+           (re-matches #"\d+" (:query-idx params))
+           (re-matches #"\d+" (:col-idx params))))
+
+    :post!
+    (fnk [conn version [:request [:params query-idx col-idx term-id]]]
+      {:version (api/remove-query-cell! conn version (util/parse-int query-idx)
+                                        (util/parse-int col-idx)
+                                        term-id)})))

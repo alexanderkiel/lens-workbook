@@ -178,7 +178,7 @@
       (when-let [workbook (api/workbook db id)]
         {:workbook workbook}))
 
-    :etag (fnk [workbook] (-> workbook :workbook/head :version/id))
+    :etag (fn [{:keys [workbook]}] (-> workbook :workbook/head :version/id))
 
     :handle-ok
     (fnk [workbook] (render-workbook workbook))
@@ -196,5 +196,6 @@
    :version-handler version/handler
    :add-query-handler version/add-query-handler
    :add-query-cell-handler version/add-query-cell-handler
+   :remove-query-cell-handler version/remove-query-cell-handler
    :private-workbook-list (private-workbook-list token-introspection-uri)})
 

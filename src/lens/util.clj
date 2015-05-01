@@ -18,7 +18,6 @@
 (defn to-seq
   "Converts a linked list into a lazy seq."
   [linked-list]
-  {:pre [(:l/head linked-list)]}
-  (cons (:l/head linked-list)
-        (lazy-seq (when-let [tail (:l/tail linked-list)]
-                    (to-seq tail)))))
+  (when linked-list
+    (cons (:l/head linked-list)
+          (lazy-seq (to-seq (:l/tail linked-list))))))

@@ -11,7 +11,8 @@
                             :put :put-workbook-handler}
         ["versions/" :id] :version-handler
         ["versions/" :id "/add-query"] :add-query-handler
-        ["versions/" :id "/add-query-cell"] :add-query-cell-handler}])
+        ["versions/" :id "/add-query-cell"] :add-query-cell-handler
+        ["versions/" :id "/remove-query-cell"] :remove-query-cell-handler}])
 
 (defn path-for [handler & params]
   (apply bidi/path-for routes handler params))
