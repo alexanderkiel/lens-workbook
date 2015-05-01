@@ -8,28 +8,14 @@
 
 ;; ---- Single Accessors ------------------------------------------------------
 
-(defn branch [db id]
-  (d/entity db [:branch/id id]))
-
 (defn workbook [db id]
   (d/entity db [:workbook/id id]))
 
 (defn version [db id]
   (d/entity db [:version/id id]))
 
-(defn query [db id]
-  (d/entity db [:query/id id]))
-
 (defn user [db id]
   (d/entity db [:user/id id]))
-
-;; ---- Lists -----------------------------------------------------------------
-
-(defn all-branches
-  "Returns a reducible coll of all branches."
-  [db]
-  (->> (d/datoms db :avet :branch/id)
-       (r/map #(d/entity db (:e %)))))
 
 ;; ---- Traversal -------------------------------------------------------------
 
@@ -41,7 +27,7 @@
 (defn query-cols
   "Returns a lazy seq of all query columns of a query or nil."
   [query]
-  (some-> query :query/cols util/to-seq reverse))
+  (some-> query :query/cols util/to-seq))
 
 (defn query-cells
   "Returns a lazy seq of all query cells of a query column or nil."
@@ -57,9 +43,9 @@
 
 ;; ---- Creations -------------------------------------------------------------
 
-(defn- create [conn fn]
+(defn create [conn fn]
   (let [tid (d/tempid :db.part/user)
-        tx-result @(d/transact conn [(fn tid)])
+        tx-result @(d/transact conn (fn tid))
         db (:db-after tx-result)]
     (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))
 
@@ -90,14 +76,14 @@
   [conn user-id name]
   {:pre [(string? user-id) (string? name)]
    :post [(:workbook/id %)]}
-  (create conn (fn [tid] [:workbook.fn/create-private tid user-id name])))
+  (create conn (fn [tid] [[:workbook.fn/create-private tid user-id name]])))
 
 (defn add-query!
   "Adds a new query to a copy of the given version."
   [conn version]
   {:pre [(:version/id version)]
    :post [(:version/id %)]}
-  (create conn (fn [tid] [:version.fn/add-query tid (:db/id version)])))
+  (create conn (fn [tid] [[:version.fn/add-query tid (:db/id version)]])))
 
 (defn add-query-cell!
   "Adds a new query cell to a copy of the given version.
@@ -107,5 +93,5 @@
   {:pre [(:version/id version) (not (neg? query-idx)) (not (neg? col-idx))
          (vector? term)]
    :post [(:version/id %)]}
-  (create conn (fn [tid] [:version.fn/add-query-cell tid (:db/id version)
-                          query-idx col-idx term])))
+  (create conn (fn [tid] [[:version.fn/add-query-cell tid (:db/id version)
+                           query-idx col-idx term]])))
