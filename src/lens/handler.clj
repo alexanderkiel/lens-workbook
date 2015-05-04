@@ -195,6 +195,7 @@
    :put-workbook-handler put-workbook-handler
    :version-handler version/handler
    :add-query-handler version/add-query-handler
+   :remove-query-handler version/remove-query-handler
    :add-query-cell-handler version/add-query-cell-handler
    :remove-query-cell-handler version/remove-query-cell-handler
    :private-workbook-list (private-workbook-list token-introspection-uri)})

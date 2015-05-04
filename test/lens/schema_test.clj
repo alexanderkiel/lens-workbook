@@ -254,3 +254,38 @@
             query (first (to-seq (:version/queries version)))
             col (first (to-seq (:query/cols query)))]
         (is (= ["T1" "T3"] (map :query.cell.term/id (to-seq (:query.col/cells col))))))))
+
+(deftest remove-query-test
+  (testing "remove only query"
+      (let [res (with [[:version.fn/create-initial (tid -1) (tid -2)]
+                       [:query.fn/create (tid -3)]
+                       [:l.fn/cons (tid -2) (tid -3) nil]])
+            version (resolve-tid res (tid -1))
+            res (with (:db-after res)
+                      [[:version.fn/remove-query (tid -1) (:db/id version) 0]])
+            version (resolve-tid res (tid -1))]
+        (is (empty? (to-seq (:version/queries version))))))
+  (testing "remove first query out of two queries"
+      (let [res (with [[:version.fn/create-initial (tid -1) (tid -2)]
+                       [:query.fn/create (tid -3)]
+                       [:l.fn/cons (tid -2) (tid -3) (tid -4)]
+                       [:query.fn/create (tid -5)]
+                       [:l.fn/cons (tid -4) (tid -5) nil]])
+            version (resolve-tid res (tid -1))
+            q2 (resolve-tid res (tid -5))
+            res (with (:db-after res)
+                      [[:version.fn/remove-query (tid -1) (:db/id version) 0]])
+            version (resolve-tid res (tid -1))]
+        (is (= [q2] (to-seq (:version/queries version))))))
+  (testing "remove second query out of two queries"
+      (let [res (with [[:version.fn/create-initial (tid -1) (tid -2)]
+                       [:query.fn/create (tid -3)]
+                       [:l.fn/cons (tid -2) (tid -3) (tid -4)]
+                       [:query.fn/create (tid -5)]
+                       [:l.fn/cons (tid -4) (tid -5) nil]])
+            version (resolve-tid res (tid -1))
+            q1 (resolve-tid res (tid -3))
+            res (with (:db-after res)
+                      [[:version.fn/remove-query (tid -1) (:db/id version) 1]])
+            version (resolve-tid res (tid -1))]
+        (is (= [q1] (to-seq (:version/queries version)))))))

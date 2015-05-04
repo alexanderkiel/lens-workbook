@@ -85,6 +85,13 @@
    :post [(:version/id %)]}
   (create conn (fn [tid] [[:version.fn/add-query tid (:db/id version)]])))
 
+(defn remove-query!
+  "Removes the query at idx from a copy of the given version."
+  [conn version idx]
+  {:pre [(:version/id version) (not (neg? idx))]
+   :post [(:version/id %)]}
+  (create conn (fn [tid] [[:version.fn/remove-query tid (:db/id version) idx]])))
+
 (defn add-query-cell!
   "Adds a new query cell to a copy of the given version.
 

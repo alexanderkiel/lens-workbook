@@ -35,6 +35,15 @@
    :method "POST"
    :title "Add Query"})
 
+(defn remove-query-form [version]
+  {:action (path-for :remove-query-handler :id (:version/id version))
+   :method "POST"
+   :params
+   {:idx
+    {:type :long
+     :description "The index of the query in the list of queries."}}
+   :title "Remove Query"})
+
 (defn add-query-cell-form [version]
   {:action (path-for :add-query-cell-handler :id (:version/id version))
    :method "POST"
@@ -75,6 +84,7 @@
        (assoc-parent-link version))
    :forms
    {:lens/add-query (add-query-form version)
+    :lens/remove-query (remove-query-form version)
     :lens/add-query-cell (add-query-cell-form version)
     :lens/remove-query-cell (remove-query-cell-form version)}
    :id (:version/id version)})
@@ -129,6 +139,18 @@
     :post!
     (fnk [conn version]
       {:version (api/add-query! conn version)})))
+
+(def remove-query-handler
+  (resource
+    post-resource-defaults
+
+    :processable?
+    (fnk [[:request params]]
+      (and (:idx params) (re-matches #"\d+" (:idx params))))
+
+    :post!
+    (fnk [conn version [:request [:params idx]]]
+      {:version (api/remove-query! conn version (util/parse-int idx))})))
 
 (def add-query-cell-handler
   (resource

@@ -195,6 +195,13 @@
         :version/parent parent
         :version/queries queries}])
 
+    (func :version.fn/create-empty
+      ""
+      [_ tid parent]
+      [{:db/id tid
+        :version/id (str (d/squuid))
+        :version/parent parent}])
+
     (func :version.fn/add-query
       "Adds a new query to a copy of the given version. Needs a tempid for the
       new version."
@@ -205,6 +212,30 @@
         [[:version.fn/create tid version new-queries]
          [:query.fn/create query]
          [:l.fn/append new-queries (:db/id queries) query]]))
+
+    (func :version.fn/remove-query
+      "Removes the query at idx from a copy of the given version. Needs a tempid
+      for the new version."
+      [db tid version idx]
+      (let [seq (fn seq [l] (when l (cons (:l/head l) (seq (:l/tail l)))))
+
+            queries (:version/queries (d/entity db version))
+
+            query-seq (seq queries)
+            new-query-seq (concat (take idx query-seq)
+                                  (drop (inc idx) query-seq))]
+        (if (empty? new-query-seq)
+          [[:version.fn/create-empty tid version]]
+          (loop [q-tid #db/id[:db.part/user]
+                 qs new-query-seq
+                 tx-data [[:version.fn/create tid version q-tid]]]
+            (if (next qs)
+              (let [n-tid (d/tempid :db.part/user)]
+                (recur
+                  n-tid
+                  (rest qs)
+                  (conj tx-data [:l.fn/cons q-tid (:db/id (first qs)) n-tid])))
+              (conj tx-data [:l.fn/cons q-tid (:db/id (first qs)) nil]))))))
 
     (func :version.fn/add-query-cell
       "Adds a new query cell to a copy of the given version.
