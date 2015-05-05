@@ -104,6 +104,8 @@
       (when-let [version (api/version db id)]
         {:version version}))
 
+    :etag (fn [{:keys [version]}] (-> version :version/id))
+
     :handle-ok
     (fnk [version] (render-version version))
 
