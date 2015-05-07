@@ -4,10 +4,11 @@
   (:require [clojure.pprint :refer [pprint pp]]
             [clojure.repl :refer :all]
             [clojure.tools.namespace.repl :refer [refresh]]
-            [lens.schema :as schema]
-            [lens.api :as api]
             [datomic.api :as d]
-            [system]))
+            [system]
+            [lens.api :as api]
+            [lens.schema :as schema]
+            [lens.util :as util]))
 
 (def system nil)
 
@@ -29,24 +30,16 @@
   (stop)
   (refresh :after 'user/startup))
 
+;; Starting and Resetting the Server
 (comment
   (startup)
   (reset))
-
-(defn delete-database []
-  (d/delete-database (:db-uri system)))
-
-(defn create-database []
-  (d/create-database (:db-uri system)))
 
 (defn connect []
   (d/connect (:db-uri system)))
 
 (defn load-schema []
   (schema/load-schema (connect)))
-
-(comment
-  (time (count-datoms db)))
 
 (comment
   (load-schema)
