@@ -1,7 +1,8 @@
 (ns user
   (:use plumbing.core)
   (:use criterium.core)
-  (:require [clojure.pprint :refer [pprint pp]]
+  (:require [clojure.core.reducers :as r]
+            [clojure.pprint :refer [pprint pp]]
             [clojure.repl :refer :all]
             [clojure.tools.namespace.repl :refer [refresh]]
             [datomic.api :as d]
@@ -40,6 +41,11 @@
 
 (defn load-schema []
   (schema/load-schema (connect)))
+
+(defn workbooks-by-user [db]
+  (->> (api/all-users db)
+       (r/map #(vector (:user/id %) (mapv :workbook/name (api/private-workbooks %))))
+       (into [])))
 
 (comment
   (load-schema)

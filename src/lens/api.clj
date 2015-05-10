@@ -17,6 +17,12 @@
 (defn user [db id]
   (d/entity db [:user/id id]))
 
+;; ---- Lists -------------------------------------------------------------
+
+(defn all-users [db]
+  (->> (d/datoms db :avet :user/id)
+       (r/map #(d/entity db (:e %)))))
+
 ;; ---- Traversal -------------------------------------------------------------
 
 (defn queries
@@ -35,7 +41,7 @@
   (some-> col :query.col/cells util/to-seq reverse))
 
 (defn private-workbooks
-  "Returns all private worksbooks of the user worted by name"
+  "Returns all private worksbooks of the user sorted by name."
   [user]
   {:pre [(:user/id user)]}
   (->> (:user/private-workbooks user)
