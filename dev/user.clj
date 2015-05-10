@@ -47,6 +47,16 @@
        (r/map #(vector (:user/id %) (mapv :workbook/name (api/private-workbooks %))))
        (into [])))
 
+(defn num-of-versions [db]
+  (->> (api/all-versions db)
+       (r/map (constantly 1))
+       (reduce +)))
+
+(defn num-of-queries [db]
+  (->> (api/all-queries db)
+       (r/map (constantly 1))
+       (reduce +)))
+
 (comment
   (load-schema)
   (def conn (connect))

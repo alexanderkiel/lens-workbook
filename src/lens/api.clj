@@ -19,8 +19,18 @@
 
 ;; ---- Lists -------------------------------------------------------------
 
+(defn- all-of [db attr]
+  (->> (d/datoms db :avet attr)
+       (r/map #(d/entity db (:e %)))))
+
 (defn all-users [db]
-  (->> (d/datoms db :avet :user/id)
+  (all-of db :user/id))
+
+(defn all-versions [db]
+  (all-of db :version/id))
+
+(defn all-queries [db]
+  (->> (d/datoms db :aevt :query/cols)
        (r/map #(d/entity db (:e %)))))
 
 ;; ---- Traversal -------------------------------------------------------------
