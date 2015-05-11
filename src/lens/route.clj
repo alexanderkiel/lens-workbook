@@ -12,6 +12,7 @@
         ["versions/" :id] :version-handler
         ["versions/" :id "/add-query"] :add-query-handler
         ["versions/" :id "/remove-query"] :remove-query-handler
+        ["versions/" :id "/duplicate-query"] :duplicate-query-handler
         ["versions/" :id "/add-query-cell"] :add-query-cell-handler
         ["versions/" :id "/remove-query-cell"] :remove-query-cell-handler}])
 

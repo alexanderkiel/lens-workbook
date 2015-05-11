@@ -237,6 +237,31 @@
                   (conj tx-data [:l.fn/cons q-tid (:db/id (first qs)) n-tid])))
               (conj tx-data [:l.fn/cons q-tid (:db/id (first qs)) nil]))))))
 
+    (func :version.fn/duplicate-query
+      "Duplicates the query at idx of the given version and insert the duplicate
+      after the original in a copy of the given version. Needs a tempid for the
+      new version."
+      [db tid version idx]
+      (let [seq (fn seq [l] (when l (cons (:l/head l) (seq (:l/tail l)))))
+
+            queries (:version/queries (d/entity db version))
+
+            query-seq (seq queries)
+            new-query-seq (concat (take (inc idx) query-seq)
+                                  (drop idx query-seq))]
+        (if (empty? new-query-seq)
+          [[:version.fn/create-empty tid version]]
+          (loop [q-tid #db/id[:db.part/user]
+                 qs new-query-seq
+                 tx-data [[:version.fn/create tid version q-tid]]]
+            (if (next qs)
+              (let [n-tid (d/tempid :db.part/user)]
+                (recur
+                  n-tid
+                  (rest qs)
+                  (conj tx-data [:l.fn/cons q-tid (:db/id (first qs)) n-tid])))
+              (conj tx-data [:l.fn/cons q-tid (:db/id (first qs)) nil]))))))
+
     (func :version.fn/add-query-cell
       "Adds a new query cell to a copy of the given version.
 

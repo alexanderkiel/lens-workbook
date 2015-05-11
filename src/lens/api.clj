@@ -108,6 +108,14 @@
    :post [(:version/id %)]}
   (create conn (fn [tid] [[:version.fn/remove-query tid (:db/id version) idx]])))
 
+(defn duplicate-query!
+  "Duplicates the query at idx of the given version and insert the duplicate
+  after the original in a copy of the given version."
+  [conn version idx]
+  {:pre [(:version/id version) (not (neg? idx))]
+   :post [(:version/id %)]}
+  (create conn (fn [tid] [[:version.fn/duplicate-query tid (:db/id version) idx]])))
+
 (defn add-query-cell!
   "Adds a new query cell to a copy of the given version.
 
