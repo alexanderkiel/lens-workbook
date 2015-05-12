@@ -1,6 +1,7 @@
 (ns lens.handler.version
   (:use plumbing.core)
   (:require [liberator.core :refer [resource]]
+            [liberator.representation :refer [as-response]]
             [lens.handler.util :refer :all]
             [lens.api :as api]
             [lens.util :as util]))
@@ -114,6 +115,11 @@
         {:version version}))
 
     :etag (fn [{:keys [version]}] (-> version :version/id))
+
+    :as-response
+    (fn [d ctx]
+      (-> (as-response d ctx)
+          (assoc-in [:headers "cache-control"] "max-age=86400")))
 
     :handle-ok
     (fnk [version] (render-version path-for version))
