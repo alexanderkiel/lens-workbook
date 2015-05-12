@@ -1,17 +1,16 @@
 (ns lens.handler.util
-  (:use plumbing.core)
-  (:require [lens.route :refer [path-for]]))
+  (:use plumbing.core))
 
 (defn decode-etag [etag]
   (subs etag 1 (dec (count etag))))
 
-(defn error-body [msg]
+(defn error-body [path-for msg]
   {:links {:up {:href (path-for :service-document-handler)}}
    :error msg})
 
-(defn error [status msg]
+(defn error [path-for status msg]
   {:status status
-   :body (error-body msg)})
+   :body (error-body path-for msg)})
 
 (def resource-defaults
   {:available-media-types ["application/json" "application/transit+json"

@@ -12,6 +12,8 @@ This application uses the following environment vars:
 
 * `PORT` - the port to listen on
 * `DB_URI` - the main Datomic database URI
+* `CONTEXT_PATH` - an optional context path under which the workbook service
+  runs. Has to start and end with a slash.
 
 ## Build
 

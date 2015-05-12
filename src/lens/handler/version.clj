@@ -1,7 +1,6 @@
 (ns lens.handler.version
   (:use plumbing.core)
   (:require [liberator.core :refer [resource]]
-            [lens.route :refer [path-for]]
             [lens.handler.util :refer :all]
             [lens.api :as api]
             [lens.util :as util]))
@@ -22,20 +21,20 @@
              (mapv #(render-query-col %)))}}
       (assoc-when :name (:query/name query))))
 
-(defn path [version]
+(defn path [path-for version]
   (path-for :version-handler :id (:version/id version)))
 
-(defn assoc-parent-link [links version]
+(defn assoc-parent-link [links path-for version]
   (if-let [parent (:version/parent version)]
-    (assoc links :lens/parent {:href (path parent)})
+    (assoc links :lens/parent {:href (path path-for parent)})
     links))
 
-(defn add-query-form [version]
+(defn add-query-form [path-for version]
   {:action (path-for :add-query-handler :id (:version/id version))
    :method "POST"
    :title "Add Query"})
 
-(defn remove-query-form [version]
+(defn remove-query-form [path-for version]
   {:action (path-for :remove-query-handler :id (:version/id version))
    :method "POST"
    :params
@@ -44,7 +43,7 @@
      :description "The index of the query in the list of queries."}}
    :title "Remove Query"})
 
-(defn duplicate-query-form [version]
+(defn duplicate-query-form [path-for version]
   {:action (path-for :duplicate-query-handler :id (:version/id version))
    :method "POST"
    :params
@@ -53,7 +52,7 @@
      :description "The index of the query in the list of queries."}}
    :title "Duplicate Query"})
 
-(defn add-query-cell-form [version]
+(defn add-query-cell-form [path-for version]
   {:action (path-for :add-query-cell-handler :id (:version/id version))
    :method "POST"
    :title "Add Query Cell"
@@ -71,7 +70,7 @@
     {:type :string
      :description "The id of the term (like T00001 or T00001_F0001)."}}})
 
-(defn remove-query-cell-form [version]
+(defn remove-query-cell-form [path-for version]
   {:action (path-for :remove-query-cell-handler :id (:version/id version))
    :method "POST"
    :title "Remove Query Cell"
@@ -86,26 +85,26 @@
     {:type :string
      :description "The id of the term (like T00001 or T00001_F0001)."}}})
 
-(defn render-version-head [version]
+(defn render-version-head [path-for version]
   {:links
    (-> {:up {:href (path-for :service-document-handler)}
-        :self {:href (path version)}}
-       (assoc-parent-link version))
+        :self {:href (path path-for version)}}
+       (assoc-parent-link path-for version))
    :forms
-   {:lens/add-query (add-query-form version)
-    :lens/remove-query (remove-query-form version)
-    :lens/duplicate-query (duplicate-query-form version)
-    :lens/add-query-cell (add-query-cell-form version)
-    :lens/remove-query-cell (remove-query-cell-form version)}
+   {:lens/add-query (add-query-form path-for version)
+    :lens/remove-query (remove-query-form path-for version)
+    :lens/duplicate-query (duplicate-query-form path-for version)
+    :lens/add-query-cell (add-query-cell-form path-for version)
+    :lens/remove-query-cell (remove-query-cell-form path-for version)}
    :id (:version/id version)})
 
-(defn render-version [version]
-  (assoc (render-version-head version)
+(defn render-version [path-for version]
+  (assoc (render-version-head path-for version)
     :queries
     (->> (api/queries version)
          (mapv #(render-query %)))))
 
-(def handler
+(defn handler [path-for]
   (resource
     resource-defaults
 
@@ -117,15 +116,15 @@
     :etag (fn [{:keys [version]}] (-> version :version/id))
 
     :handle-ok
-    (fnk [version] (render-version version))
+    (fnk [version] (render-version path-for version))
 
     :handle-not-found
-    (error-body "Version not found.")
+    (error-body path-for "Version not found.")
 
     :location
-    (fnk [version] (path version))))
+    (fnk [version] (path path-for version))))
 
-(def post-resource-defaults
+(defn post-resource-defaults [path-for]
   (merge
     resource-defaults
 
@@ -139,22 +138,22 @@
          {:version version}))
 
      :location
-     (fnk [version] (path version))
+     (fnk [version] (path path-for version))
 
      :handle-created
-     (fnk [version] (render-version-head version))}))
+     (fnk [version] (render-version-head path-for version))}))
 
-(def add-query-handler
+(defn add-query-handler [path-for]
   (resource
-    post-resource-defaults
+    (post-resource-defaults path-for)
 
     :post!
     (fnk [conn version]
       {:version (api/add-query! conn version)})))
 
-(def remove-query-handler
+(defn remove-query-handler [path-for]
   (resource
-    post-resource-defaults
+    (post-resource-defaults path-for)
 
     :processable?
     (fnk [[:request params]]
@@ -164,9 +163,9 @@
     (fnk [conn version [:request [:params idx]]]
       {:version (api/remove-query! conn version (util/parse-int idx))})))
 
-(def duplicate-query-handler
+(defn duplicate-query-handler [path-for]
   (resource
-    post-resource-defaults
+    (post-resource-defaults path-for)
 
     :processable?
     (fnk [[:request params]]
@@ -176,9 +175,9 @@
     (fnk [conn version [:request [:params idx]]]
       {:version (api/duplicate-query! conn version (util/parse-int idx))})))
 
-(def add-query-cell-handler
+(defn add-query-cell-handler [path-for]
   (resource
-    post-resource-defaults
+    (post-resource-defaults path-for)
 
     :processable?
     (fnk [[:request params]]
@@ -193,9 +192,9 @@
                                      (util/parse-int col-idx)
                                      [(keyword term-type) term-id])})))
 
-(def remove-query-cell-handler
+(defn remove-query-cell-handler [path-for]
   (resource
-    post-resource-defaults
+    (post-resource-defaults path-for)
 
     :processable?
     (fnk [[:request params]]

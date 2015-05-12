@@ -10,16 +10,20 @@
     ["-i" "--ip" "The IP to bind" :default "0.0.0.0"]
     ["-t" "--thread" "Number of worker threads" :default 4 :parse-fn parse-int]
     ["-d" "--database-uri" "The Datomic database URI to use"]
-    ["--token-introspection-uri" "The OAuth2 token inspection URI to use"]))
+    ["--token-introspection-uri" "The OAuth2 token inspection URI to use"]
+    ["-c" "--context-path" "An optional context path under which the workbook service runs. Has to start and end with a slash." :default "/"]))
 
 (defn -main [& args]
   (let [[options _ banner] (cli args)]
     (if (and (:database-uri options) (:token-introspection-uri options))
       (do
-        (run-server (app (:database-uri options) (:token-introspection-uri options))
+        (run-server (app (:database-uri options)
+                         (:token-introspection-uri options)
+                         (:context-path options))
                     (merge {:worker-name-prefix "http-kit-worker-"} options))
         (println "Datomic:" (:database-uri options))
         (println "OAuth2:" (:token-introspection-uri options))
+        (println "Context Path:" (:context-path options))
         (println "Server started")
         (println "Listen at" (str (:ip options) ":" (:port options)))
         (println "Using" (:thread options) "worker threads"))

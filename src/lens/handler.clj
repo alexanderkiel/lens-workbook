@@ -4,19 +4,18 @@
             [clojure.core.async :refer [<!! timeout]]
             [liberator.core :refer [defresource resource]]
             [liberator.representation :refer [as-response]]
-            [lens.route :refer [path-for]]
             [lens.handler.util :refer :all]
             [lens.handler.version :as version]
             [lens.api :as api]
             [lens.oauth2 :as oauth2]))
 
-(defn workbook-path [workbook]
+(defn workbook-path [path-for workbook]
   (path-for :get-workbook-handler :id (:workbook/id workbook)))
 
 ;; ---- Service Document ------------------------------------------------------
 
-(defn find-workbook-form []
-  {:action "/find-workbook"
+(defn find-workbook-form [path-for]
+  {:action (path-for :find-workbook-handler)
    :method "GET"
    :title "Find Workbook"
    :params
@@ -24,12 +23,7 @@
     {:type :string
      :description "The :id of the workbook."}}})
 
-(defn create-workbook-form []
-  {:action "/workbooks"
-   :method "POST"
-   :title "Create A New Workbook"})
-
-(def service-document-handler
+(defn service-document-handler [path-for]
   (resource
     resource-defaults
 
@@ -39,13 +33,12 @@
      {:self {:href (path-for :service-document-handler)}
       :lens/private-workbooks {:href (path-for :private-workbook-list)}}
      :forms
-     {:lens/find-workbook (find-workbook-form)
-      :lens/create-workbook (create-workbook-form)}}))
+     {:lens/find-workbook (find-workbook-form path-for)}}))
 
 ;; ---- Workbook --------------------------------------------------------------
 
-(defn update-workbook-form [workbook]
-  {:action (workbook-path workbook)
+(defn update-workbook-form [path-for workbook]
+  {:action (workbook-path path-for workbook)
    :method "PUT"
    :title "Update Workbook"
    :description "Updates the workbook to point to another version."
@@ -54,17 +47,17 @@
     {:type :string
      :description "The :id of the version to put the workbook on."}}})
 
-(defn render-workbook [workbook]
+(defn render-workbook [path-for workbook]
   {:links
    {:up {:href (path-for :service-document-handler)}
-    :self {:href (workbook-path workbook)}
-    :lens/head {:href (version/path (:workbook/head workbook))}}
+    :self {:href (workbook-path path-for workbook)}
+    :lens/head {:href (version/path path-for (:workbook/head workbook))}}
    :forms
-   {:lens/update-workbook (update-workbook-form workbook)}
+   {:lens/update-workbook (update-workbook-form path-for workbook)}
    :id (:workbook/id workbook)
    :name (:workbook/name workbook)})
 
-(def get-workbook-handler
+(defn get-workbook-handler [path-for]
   (resource
     resource-defaults
 
@@ -76,31 +69,32 @@
     :etag (fnk [workbook] (-> workbook :workbook/head :version/id))
 
     :handle-ok
-    (fnk [workbook] (render-workbook workbook))
+    (fnk [workbook] (render-workbook path-for workbook))
 
     :handle-not-found
-    (error-body "Workbook not found.")))
+    (error-body path-for "Workbook not found.")))
 
-(defnk put-workbook-handler [conn [:params id] headers :as req]
-  (if-let [new-version-id (:version-id (:params req))]
-    (if-let [old-version-id (some-> (headers "if-match") decode-etag)]
-      (try
-        (let [wb (api/update-workbook! conn id old-version-id new-version-id)]
-          {:status 204
-           :headers {"etag" (str "\"" (:version/id (:workbook/head wb)) "\"")}})
-        (catch Exception e
-          (condp = (:type (ex-data e))
-            :lens.schema/workbook-not-found (error 404 "Workbook not found.")
-            :lens.schema/precondition-failed (error 412 "Precondition failed.")
-            :lens.schema/version-not-found (error 422 "Version doesn't exist."))))
-      (error 428 "Precondition required."))
-    (error 422 "Version id is missing.")))
+(defn put-workbook-handler [path-for]
+  (fnk [conn [:params id] headers :as req]
+    (if-let [new-version-id (:version-id (:params req))]
+      (if-let [old-version-id (some-> (headers "if-match") decode-etag)]
+        (try
+          (let [wb (api/update-workbook! conn id old-version-id new-version-id)]
+            {:status 204
+             :headers {"etag" (str "\"" (:version/id (:workbook/head wb)) "\"")}})
+          (catch Exception e
+            (condp = (:type (ex-data e))
+              :lens.schema/workbook-not-found (error path-for 404 "Workbook not found.")
+              :lens.schema/precondition-failed (error path-for 412 "Precondition failed.")
+              :lens.schema/version-not-found (error path-for 422 "Version doesn't exist."))))
+        (error path-for 428 "Precondition required."))
+      (error path-for 422 "Version id is missing."))))
 
 ;; ---- Private Workbooks -----------------------------------------------------
 
-(defn render-embedded-workbook [workbook]
+(defn render-embedded-workbook [path-for workbook]
   {:links
-   {:self {:href (workbook-path workbook)}}
+   {:self {:href (workbook-path path-for workbook)}}
    :id (:workbook/id workbook)
    :name (:workbook/name workbook)})
 
@@ -108,7 +102,7 @@
   "List of all private workbooks of a user.
 
   Requires authentication. Also used to create a new private workbook."
-  [token-introspection-uri]
+  [path-for token-introspection-uri]
   (resource
     resource-defaults
 
@@ -157,15 +151,15 @@
        {:lens/workbooks
         (if-let [user (api/user db sub)]
           (->> (api/private-workbooks user)
-               (mapv render-embedded-workbook))
+               (mapv #(render-embedded-workbook path-for %)))
           [])}})
 
     :handle-created
-    (fnk [workbook] (render-workbook workbook))))
+    (fnk [workbook] (render-workbook path-for workbook))))
 
 ;; ---- Find Workbook -------------------------------------------------------
 
-(def find-workbook-handler
+(defn find-workbook-handler [path-for]
   (resource
     resource-defaults
 
@@ -181,23 +175,24 @@
     :etag (fn [{:keys [workbook]}] (-> workbook :workbook/head :version/id))
 
     :handle-ok
-    (fnk [workbook] (render-workbook workbook))
+    (fnk [workbook] (render-workbook path-for workbook))
 
     :handle-not-found
-    (error-body "Workbook not found.")))
+    (error-body path-for "Workbook not found.")))
 
 ;; ---- Handlers --------------------------------------------------------------
 
-(defn handlers [token-introspection-uri]
-  {:service-document-handler service-document-handler
-   :find-workbook-handler find-workbook-handler
-   :get-workbook-handler get-workbook-handler
-   :put-workbook-handler put-workbook-handler
-   :version-handler version/handler
-   :add-query-handler version/add-query-handler
-   :remove-query-handler version/remove-query-handler
-   :duplicate-query-handler version/duplicate-query-handler
-   :add-query-cell-handler version/add-query-cell-handler
-   :remove-query-cell-handler version/remove-query-cell-handler
-   :private-workbook-list (private-workbook-list token-introspection-uri)})
+(defn handlers [path-for token-introspection-uri]
+  {:service-document-handler (service-document-handler path-for)
+   :find-workbook-handler (find-workbook-handler path-for)
+   :get-workbook-handler (get-workbook-handler path-for)
+   :put-workbook-handler (put-workbook-handler path-for)
+   :version-handler (version/handler path-for)
+   :add-query-handler (version/add-query-handler path-for)
+   :remove-query-handler (version/remove-query-handler path-for)
+   :duplicate-query-handler (version/duplicate-query-handler path-for)
+   :add-query-cell-handler (version/add-query-cell-handler path-for)
+   :remove-query-cell-handler (version/remove-query-cell-handler path-for)
+   :private-workbook-list (private-workbook-list path-for
+                                                 token-introspection-uri)})
 

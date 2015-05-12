@@ -25,12 +25,13 @@
   {:app app
    :db-uri (or (env "DB_URI") (create-mem-db))
    :token-introspection-uri (env "TOKEN_INTROSPECTION_URI")
+   :context-path (or (env "CONTEXT_PATH") "/")
    :version (System/getProperty "lens.version")
    :port (or (some-> (env "PORT") (parse-int)) 5002)})
 
-(defn start [{:keys [app db-uri token-introspection-uri port]
+(defn start [{:keys [app db-uri token-introspection-uri context-path port]
               :as system}]
-  (let [stop-fn (run-server (app db-uri token-introspection-uri)
+  (let [stop-fn (run-server (app db-uri token-introspection-uri context-path)
                             {:port port})]
     (assoc system :stop-fn stop-fn)))
 
