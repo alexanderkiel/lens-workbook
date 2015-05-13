@@ -1,4 +1,5 @@
 (ns system
+  (:use plumbing.core)
   (:require [clojure.string :as str]
             [org.httpkit.server :refer [run-server]]
             [datomic.api :as d]
@@ -26,13 +27,11 @@
    :db-uri (or (env "DB_URI") (create-mem-db))
    :token-introspection-uri (env "TOKEN_INTROSPECTION_URI")
    :context-path (or (env "CONTEXT_PATH") "/")
-   :version (System/getProperty "lens.version")
+   :version (System/getProperty "lens-workbook.version")
    :port (or (some-> (env "PORT") (parse-int)) 5002)})
 
-(defn start [{:keys [app db-uri token-introspection-uri context-path port]
-              :as system}]
-  (let [stop-fn (run-server (app db-uri token-introspection-uri context-path)
-                            {:port port})]
+(defnk start [app port & more :as system]
+  (let [stop-fn (run-server (app more) {:port port})]
     (assoc system :stop-fn stop-fn)))
 
 (defn stop [{:keys [stop-fn] :as system}]
