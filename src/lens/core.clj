@@ -6,18 +6,24 @@
             [lens.util :refer [parse-int]]))
 
 (def cli-options
-  [["-p" "--port PORT" "Listen on this port" :default 8080 :parse-fn parse-int
+  [["-p" "--port PORT" "Listen on this port"
+    :default 8080
+    :parse-fn parse-int
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
-   ["-i" "--ip IP" "The IP to bind" :default "0.0.0.0"]
-   ["-t" "--thread NUM" "Number of worker threads" :default 4 :parse-fn parse-int
+   ["-i" "--ip IP" "The IP to bind"
+    :default "0.0.0.0"]
+   ["-t" "--thread NUM" "Number of worker threads"
+    :default 4
+    :parse-fn parse-int
     :validate [#(< 0 % 64) "Must be a number between 0 and 64"]]
    ["-d" "--database-uri URI" "The Datomic database URI to use"
     :validate [#(.startsWith % "datomic")
                "Database URI has to start with datomic."]]
-   [nil "--token-introspection-uri URI" "The OAuth2 token inspection URI to use"]
-   ["-c" "--context-path PATH" (str "An optional context path under which the "
-                                    "workbook service runs. Has to start and end "
-                                    "with a slash.") :default "/"]
+   [nil "--token-introspection-uri URI"
+    "The OAuth2 token inspection URI to use"]
+   ["-c" "--context-path PATH"
+    "An optional context path under which the workbook service runs. Has to start and end with a slash."
+    :default "/"]
    ["-h" "--help" "Show this help"]])
 
 (defn usage [options-summary]
