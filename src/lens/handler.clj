@@ -23,12 +23,13 @@
     {:type :string
      :description "The :id of the workbook."}}})
 
-(defn service-document-handler [path-for]
+(defn service-document-handler [path-for version]
   (resource
     resource-defaults
 
     :handle-ok
     {:name "Lens Workbook"
+     :version version
      :links
      {:self {:href (path-for :service-document-handler)}
       :lens/private-workbooks {:href (path-for :private-workbook-list)}}
@@ -182,8 +183,8 @@
 
 ;; ---- Handlers --------------------------------------------------------------
 
-(defn handlers [path-for token-introspection-uri]
-  {:service-document-handler (service-document-handler path-for)
+(defnk handlers [path-for version token-introspection-uri]
+  {:service-document-handler (service-document-handler path-for version)
    :find-workbook-handler (find-workbook-handler path-for)
    :get-workbook-handler (get-workbook-handler path-for)
    :put-workbook-handler (put-workbook-handler path-for)

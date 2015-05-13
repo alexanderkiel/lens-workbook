@@ -1,4 +1,5 @@
 (ns lens.core
+  (:use plumbing.core)
   (:require [clojure.string :as str]
             [clojure.tools.cli :as cli]
             [org.httpkit.server :refer [run-server]]
@@ -16,7 +17,7 @@
     :default 4
     :parse-fn parse-int
     :validate [#(< 0 % 64) "Must be a number between 0 and 64"]]
-   ["-d" "--database-uri URI" "The Datomic database URI to use"
+   ["-d" "--db-uri URI" "The Datomic database URI to use"
     :validate [#(.startsWith % "datomic")
                "Database URI has to start with datomic."]]
    [nil "--token-introspection-uri URI"
@@ -42,7 +43,8 @@
   (System/exit status))
 
 (defn -main [& args]
-  (let [{:keys [options errors summary]} (cli/parse-opts args cli-options)]
+  (let [{:keys [options errors summary]} (cli/parse-opts args cli-options)
+        version (System/getProperty "lens-workbook.version")]
     (cond
       (:help options)
       (exit 0 (usage summary))
@@ -50,16 +52,17 @@
       errors
       (exit 1 (error-msg errors))
 
-      (nil? (:database-uri options))
+      (nil? (:db-uri options))
       (exit 1 "Missing database URI.")
 
       (nil? (:token-introspection-uri options))
       (exit 1 "Missing OAuth2 token inspection URI."))
 
-    (let [{:keys [database-uri token-introspection-uri context-path]} options]
-      (run-server (app database-uri token-introspection-uri context-path)
+    (letk [[db-uri token-introspection-uri context-path] options]
+      (run-server (app (assoc options :version version))
                   (merge {:worker-name-prefix "http-kit-worker-"} options))
-      (println "Datomic:" database-uri)
+      (println "Version:" version)
+      (println "Datomic:" db-uri)
       (println "OAuth2:" token-introspection-uri)
       (println "Context Path:" context-path)
       (println "Server started")

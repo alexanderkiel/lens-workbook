@@ -1,4 +1,5 @@
 (ns lens.app
+  (:use plumbing.core)
   (:require [lens.route :refer [routes]]
             [lens.handler :refer [handlers]]
             [lens.middleware.datomic :refer [wrap-connection]]
@@ -22,11 +23,11 @@
       {:status 404
        :body {:error "Not Found."}})))
 
-(defn app [db-uri token-introspection-uri context-path]
+(defnk app [db-uri context-path :as opts]
   {:pre [(re-matches #"/(?:.*/)?" context-path)]}
-  (let [routes (routes context-path)]
-    (-> (bidi-ring/make-handler routes (handlers (path-for routes)
-                                                 token-introspection-uri))
+  (let [routes (routes context-path)
+        opts (assoc opts :path-for (path-for routes))]
+    (-> (bidi-ring/make-handler routes (handlers opts))
         (wrap-not-found)
         (wrap-exception)
         (wrap-restful-format)
