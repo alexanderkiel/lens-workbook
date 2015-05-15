@@ -1,7 +1,5 @@
 (ns lens.route)
 
-;; ---- Routes ----------------------------------------------------------------
-
 (defn routes [context-path]
   [context-path
    {"" :service-document-handler
