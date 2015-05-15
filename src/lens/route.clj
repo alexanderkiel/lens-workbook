@@ -1,5 +1,4 @@
-(ns lens.route
-  (:require [bidi.bidi :as bidi]))
+(ns lens.route)
 
 ;; ---- Routes ----------------------------------------------------------------
 
