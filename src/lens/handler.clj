@@ -7,7 +7,8 @@
             [lens.handler.util :refer :all]
             [lens.handler.version :as version]
             [lens.api :as api]
-            [lens.oauth2 :as oauth2]))
+            [lens.oauth2 :as oauth2])
+  (:import [java.net URI]))
 
 (defn workbook-path [path-for workbook]
   (path-for :get-workbook-handler :id (:workbook/id workbook)))
@@ -187,6 +188,7 @@
 ;; ---- Handlers --------------------------------------------------------------
 
 (defnk handlers [path-for version token-introspection-uri]
+  {:pre [(URI/create token-introspection-uri)]}
   {:service-document-handler (service-document-handler path-for version)
    :find-workbook-handler (find-workbook-handler path-for)
    :get-workbook-handler (get-workbook-handler path-for)
