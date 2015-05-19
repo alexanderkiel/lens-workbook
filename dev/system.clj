@@ -28,7 +28,7 @@
    :token-introspection-uri (env "TOKEN_INTROSPECTION_URI")
    :context-path (or (env "CONTEXT_PATH") "/")
    :version (System/getProperty "lens-workbook.version")
-   :port (or (some-> (env "PORT") (parse-int)) 5002)})
+   :port (or (some-> (env "PORT") (parse-int)) 5000)})
 
 (defnk start [app port & more :as system]
   (let [stop-fn (run-server (app more) {:port port})]
