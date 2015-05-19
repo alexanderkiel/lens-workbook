@@ -5,7 +5,6 @@
             [io.clojure.liberator-transit]
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
-            [ring.middleware.format :refer [wrap-restful-format]]
             [lens.route :refer [routes]]
             [lens.handler :refer [handlers]]
             [lens.middleware.datomic :refer [wrap-connection]]
@@ -22,8 +21,7 @@
   (fn [req]
     (if-let [resp (handler req)]
       resp
-      {:status 404
-       :body {:error "Not Found."}})))
+      {:status 404})))
 
 (defnk app [db-uri context-path :as opts]
   {:pre [(re-matches #"(?:/.*[^/])?" context-path)]}
@@ -32,7 +30,6 @@
     (-> (bidi-ring/make-handler routes (handlers opts))
         (wrap-not-found)
         (wrap-exception)
-        (wrap-restful-format)
         (wrap-cors)
         (wrap-connection db-uri)
         (wrap-keyword-params)
