@@ -179,7 +179,10 @@
     (fnk [workbook] (render-workbook path-for workbook))
 
     :handle-not-found
-    (error-body path-for "Workbook not found.")))
+    (error-body path-for "Workbook not found.")
+
+    :handle-unprocessable-entity
+    (error-body path-for "Missing query param 'id'.")))
 
 ;; ---- Handlers --------------------------------------------------------------
 
