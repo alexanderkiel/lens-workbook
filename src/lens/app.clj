@@ -1,16 +1,18 @@
 (ns lens.app
   (:use plumbing.core)
-  (:require [lens.route :refer [routes]]
+  (:require [bidi.bidi :as bidi]
+            [bidi.ring :as bidi-ring]
+            [io.clojure.liberator-transit]
+            [ring.middleware.params :refer [wrap-params]]
+            [ring.middleware.keyword-params :refer [wrap-keyword-params]]
+            [ring.middleware.format :refer [wrap-restful-format]]
+            [lens.route :refer [routes]]
             [lens.handler :refer [handlers]]
             [lens.middleware.datomic :refer [wrap-connection]]
             [ring.middleware.params :refer [wrap-params]]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [lens.middleware.wan-exception :refer [wrap-exception]]
-            [lens.middleware.cors :refer [wrap-cors]]
-            [bidi.ring :as bidi-ring]
-            [io.clojure.liberator-transit]
-            [ring.middleware.format :refer [wrap-restful-format]]
-            [bidi.bidi :as bidi]))
+            [lens.middleware.cors :refer [wrap-cors]]))
 
 (defn path-for [routes]
   (fn [handler & params]
