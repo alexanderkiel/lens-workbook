@@ -67,7 +67,7 @@
       (when-let [workbook (api/workbook db id)]
         {:workbook workbook}))
 
-    :etag (fnk [workbook] (-> workbook :workbook/head :version/id))
+    :etag (fn [{:keys [workbook]}] (-> workbook :workbook/head :version/id))
 
     :handle-ok
     (fnk [workbook] (render-workbook path-for workbook))
