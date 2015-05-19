@@ -2,7 +2,7 @@
   (:use plumbing.core)
   (:require [clojure.string :as str]
             [clojure.core.async :refer [<!! timeout]]
-            [liberator.core :refer [defresource resource]]
+            [liberator.core :refer [resource]]
             [liberator.representation :refer [as-response]]
             [lens.handler.util :refer :all]
             [lens.handler.version :as version]
@@ -32,7 +32,7 @@
      :version version
      :links
      {:self {:href (path-for :service-document-handler)}
-      :lens/private-workbooks {:href (path-for :private-workbook-list)}}
+      :lens/private-workbooks {:href (path-for :all-private-workbooks)}}
      :forms
      {:lens/find-workbook (find-workbook-form path-for)}}))
 
@@ -99,7 +99,7 @@
    :id (:workbook/id workbook)
    :name (:workbook/name workbook)})
 
-(defn private-workbook-list
+(defn all-private-workbooks-handler
   "List of all private workbooks of a user.
 
   Requires authentication. Also used to create a new private workbook."
@@ -139,10 +139,10 @@
     :handle-ok
     (fnk [db [:user-info sub]]
       {:links
-       {:self {:href (path-for :private-workbook-list)}}
+       {:self {:href (path-for :all-private-workbooks)}}
        :forms
        {:lens/create
-        {:action (path-for :private-workbook-list)
+        {:action (path-for :all-private-workbooks)
          :method "POST"
          :title "Create A Private Workbook"
          :params
@@ -194,6 +194,6 @@
    :duplicate-query-handler (version/duplicate-query-handler path-for)
    :add-query-cell-handler (version/add-query-cell-handler path-for)
    :remove-query-cell-handler (version/remove-query-cell-handler path-for)
-   :private-workbook-list (private-workbook-list path-for
-                                                 token-introspection-uri)})
+   :all-private-workbooks (all-private-workbooks-handler
+                            path-for token-introspection-uri)})
 

@@ -4,7 +4,7 @@
   [context-path
    {"" :service-document-handler
     "find-workbook" :find-workbook-handler
-    "private-workbooks" :private-workbook-list
+    "private-workbooks" :all-private-workbooks
     ["workbooks/" :id] {:get :get-workbook-handler
                         :put :put-workbook-handler}
     ["versions/" :id] :version-handler
