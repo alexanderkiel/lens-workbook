@@ -1,5 +1,6 @@
 (defproject lens-workbook "0.1-SNAPSHOT"
   :description "A workbook storage service for Lens."
+  :url "https://github.com/alexanderkiel/lens-workbook"
 
   :min-lein-version "2.0.0"
 

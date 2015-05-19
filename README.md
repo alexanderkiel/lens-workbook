@@ -1,10 +1,25 @@
-# LIFE Lens Workbook Service
+__This software is ALPHA, lacks documentation and has to be deployed in conjunction with other Lens modules.__
+
+# Lens Workbook Service
 
 A workbook storage service for Lens.
 
-## Usage
+## Usage with Leiningen
 
-* lein with-profile production-run trampoline run
+To start the service with leiningen, run the following command 
+
+    lein with-profile production,datomic-free trampoline run -h
+
+This prints a help of all command line options. You need to specify at least a
+database URI and a token introspection URI. The database URI has to point to a
+Datomic Free Edition Database. If you like to use the Pro Edition, you have
+to use the `datomic-pro` leiningen profile instead of the `datomic-free`
+profile. An example database URI is:
+
+    datomic:free://localhost:4334/lens-workbook
+    
+The token introspection URI has to point to the introspection endpoint of the
+[lens-auth][1] service.
 
 ## Usage on Heroku Compatible PaaS
 
@@ -12,25 +27,12 @@ This application uses the following environment vars:
 
 * `PORT` - the port to listen on
 * `DB_URI` - the main Datomic database URI
+* `TOKEN_INTROSPECTION_URI` -  the OAuth2 token inspection URI to use
 * `CONTEXT_PATH` - an optional context path under which the workbook service
   runs. Has to start and end with a slash.
+* `DATOMIC_EDITION` - one of `free` or `pro` with a default of `free` 
 
-## Build
-
-Currently a complete compilation works using:
-
-    lein with-profile production compile :all
-
-## Run
-
-Just use the command from the Procfiles web task which currently is
-
-    lein with-profile production-run trampoline run
-
-Trampoline lets the Leiningen process behind. So this is a production ready run
-command.
-
-If you have foreman installed you can create an `.env` file listing the
+If you have [foreman][2] installed you can create an `.env` file listing the
 environment vars specified above and just type `foreman start`.
 
 ## Develop
@@ -78,3 +80,12 @@ and edit workbooks. Workbooks can be moved from private to groups and between
 groups.
 
 Workbooks itself have also members. 
+
+## License
+
+Copyright © 2015 Alexander Kiel
+
+Distributed under the Eclipse Public License, the same as Clojure.
+
+[1]: https://github.com/alexanderkiel/lens-auth
+[2]: https://github.com/ddollar/foreman
