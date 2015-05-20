@@ -28,9 +28,8 @@ This application uses the following environment vars:
 * `PORT` - the port to listen on
 * `DB_URI` - the main Datomic database URI
 * `TOKEN_INTROSPECTION_URI` -  the OAuth2 token inspection URI to use
-* `CONTEXT_PATH` - an optional context path under which the workbook service
-  runs. Has to start and end with a slash.
-* `DATOMIC_EDITION` - one of `free` or `pro` with a default of `free` 
+* `CONTEXT_PATH` - an optional context path under which the workbook service runs
+* `DATOMIC_EDITION` - one of `free` or `pro` with a default of `free`
 
 If you have [foreman][2] installed you can create an `.env` file listing the
 environment vars specified above and just type `foreman start`.

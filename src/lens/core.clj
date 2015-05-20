@@ -6,6 +6,21 @@
             [lens.app :refer [app]]
             [lens.util :refer [parse-int]]))
 
+(defn- ensure-facing-separator [path]
+  (if (.startsWith path "/")
+    path
+    (str "/" path)))
+
+(defn- remove-trailing-separator [path]
+  (if (.endsWith path "/")
+    (subs path 0 (dec (count path)))
+    path))
+
+(defn- parse-path [path]
+  (if (= "/" path)
+    path
+    (-> path ensure-facing-separator remove-trailing-separator)))
+
 (def cli-options
   [["-p" "--port PORT" "Listen on this port"
     :default 8080
@@ -23,8 +38,9 @@
    [nil "--token-introspection-uri URI"
     "The OAuth2 token inspection URI to use"]
    ["-c" "--context-path PATH"
-    "An optional context path under which the workbook service runs. Has to start and end with a slash."
-    :default "/"]
+    "An optional context path under which the workbook service runs"
+    :default "/"
+    :parse-fn parse-path]
    ["-h" "--help" "Show this help"]])
 
 (defn usage [options-summary]
