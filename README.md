@@ -6,7 +6,7 @@ A workbook storage service for Lens.
 
 ## Usage with Leiningen
 
-To start the service with leiningen, run the following command 
+To start the service with leiningen, run the following command
 
     lein with-profile production,datomic-free trampoline run -h
 
@@ -26,7 +26,7 @@ The token introspection URI has to point to the introspection endpoint of the
 This application uses the following environment vars:
 
 * `PORT` - the port to listen on
-* `DB_URI` - the main Datomic database URI
+* `DB_URI` - the Datomic database URI
 * `TOKEN_INTROSPECTION_URI` -  the OAuth2 token inspection URI to use
 * `CONTEXT_PATH` - an optional context path under which the workbook service runs
 * `DATOMIC_EDITION` - one of `free` or `pro` with a default of `free`
