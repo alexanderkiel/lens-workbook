@@ -107,7 +107,7 @@
 
 (defn handler [path-for]
   (resource
-    resource-defaults
+    (resource-defaults :cache-control "max-age=86400")
 
     :exists?
     (fnk [db [:request [:params id]]]
@@ -115,11 +115,6 @@
         {:version version}))
 
     :etag (fn [{:keys [version]}] (-> version :version/id))
-
-    :as-response
-    (fn [d ctx]
-      (-> (as-response d ctx)
-          (assoc-in [:headers "cache-control"] "max-age=86400")))
 
     :handle-ok
     (fnk [version] (render-version path-for version))
@@ -132,7 +127,7 @@
 
 (defn post-resource-defaults [path-for]
   (merge
-    resource-defaults
+    (resource-defaults)
 
     {:allowed-methods [:post]
      :can-post-to-missing? false

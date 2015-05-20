@@ -4,6 +4,7 @@
             [clojure.core.async :refer [<!! timeout]]
             [liberator.core :refer [resource]]
             [liberator.representation :refer [as-response]]
+            [pandect.algo.md5 :refer [md5]]
             [lens.handler.util :refer :all]
             [lens.handler.version :as version]
             [lens.api :as api]
@@ -15,8 +16,8 @@
 
 ;; ---- Service Document ------------------------------------------------------
 
-(defn find-workbook-form [path-for]
-  {:action (path-for :find-workbook-handler)
+(defn find-workbook-form [action]
+  {:action action
    :method "GET"
    :title "Find Workbook"
    :params
@@ -26,7 +27,14 @@
 
 (defn service-document-handler [path-for version]
   (resource
-    resource-defaults
+    (resource-defaults :cache-control "max-age=60")
+
+    :etag
+    (fnk [[:representation media-type]]
+      (md5 (str media-type
+                (path-for :service-document-handler)
+                (path-for :all-private-workbooks)
+                (path-for :find-workbook-handler))))
 
     :handle-ok
     {:name "Lens Workbook"
@@ -35,7 +43,8 @@
      {:self {:href (path-for :service-document-handler)}
       :lens/private-workbooks {:href (path-for :all-private-workbooks)}}
      :forms
-     {:lens/find-workbook (find-workbook-form path-for)}}))
+     {:lens/find-workbook
+      (find-workbook-form (path-for :find-workbook-handler))}}))
 
 ;; ---- Workbook --------------------------------------------------------------
 
@@ -61,7 +70,7 @@
 
 (defn get-workbook-handler [path-for]
   (resource
-    resource-defaults
+    (resource-defaults)
 
     :exists?
     (fnk [db [:request [:params id]]]
@@ -106,7 +115,7 @@
   Requires authentication. Also used to create a new private workbook."
   [path-for token-introspection-uri]
   (resource
-    resource-defaults
+    (resource-defaults)
 
     :allowed-methods [:get :post]
 
@@ -163,7 +172,7 @@
 
 (defn find-workbook-handler [path-for]
   (resource
-    resource-defaults
+    (resource-defaults)
 
     :processable?
     (fnk [[:request params]]

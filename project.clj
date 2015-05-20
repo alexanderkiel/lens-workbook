@@ -19,6 +19,7 @@
                  [com.cognitect/transit-clj "0.8.271"]
                  [io.clojure/liberator-transit "0.3.0"]
                  [org.clojars.akiel/shortid "0.1"]
+                 [pandect "0.5.2"]
                  [clj-time "0.6.0"]
                  [clj-stacktrace "0.2.7"]
                  [org.slf4j/slf4j-api "1.7.7"]
