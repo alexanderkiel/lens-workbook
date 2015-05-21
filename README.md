@@ -80,6 +80,14 @@ groups.
 
 Workbooks itself have also members. 
 
+## Prepare Datomic Transactor
+
+The Lens Workbook Service uses [shortid][3] to generate workbook ids. Because
+the ids are generated inside a Datomic transaction, the transactor needs the
+shortid jar file in its classpath. You can download the jar file from the
+[shortid releases][4] on GitHub and place them in the lib directory of your
+Datomic installation.
+
 ## License
 
 Copyright © 2015 Alexander Kiel
@@ -88,3 +96,5 @@ Distributed under the Eclipse Public License, the same as Clojure.
 
 [1]: https://github.com/alexanderkiel/lens-auth
 [2]: https://github.com/ddollar/foreman
+[3]: https://github.com/alexanderkiel/shortid
+[4]: https://github.com/alexanderkiel/shortid/releases
