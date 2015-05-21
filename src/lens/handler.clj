@@ -2,7 +2,7 @@
   (:use plumbing.core)
   (:require [clojure.string :as str]
             [clojure.core.async :refer [<!! timeout]]
-            [liberator.core :refer [resource]]
+            [liberator.core :refer [resource negotiate-media-type]]
             [liberator.representation :refer [as-response]]
             [pandect.algo.md5 :refer [md5]]
             [lens.handler.util :refer :all]
@@ -48,6 +48,15 @@
 
 ;; ---- Workbook --------------------------------------------------------------
 
+(defn workbook-etag [path-for media-type workbook]
+  (let [head (:workbook/head workbook)]
+    (str (md5 (str media-type
+                   (path-for :service-document-handler)
+                   (workbook-path path-for workbook)
+                   (version/path path-for head)))
+         ";"
+         (:version/id head))))
+
 (defn update-workbook-form [path-for workbook]
   {:action (workbook-path path-for workbook)
    :method "PUT"
@@ -70,14 +79,17 @@
 
 (defn get-workbook-handler [path-for]
   (resource
-    (resource-defaults)
+    (resource-defaults :cache-control "no-cache")
 
     :exists?
     (fnk [db [:request [:params id]]]
       (when-let [workbook (api/workbook db id)]
         {:workbook workbook}))
 
-    :etag (fn [{:keys [workbook]}] (-> workbook :workbook/head :version/id))
+    :etag
+    (fnk [[:representation media-type] & more]
+      (when-let [workbook (:workbook more)]
+        (workbook-etag path-for media-type workbook)))
 
     :handle-ok
     (fnk [workbook] (render-workbook path-for workbook))
@@ -85,19 +97,36 @@
     :handle-not-found
     (error-body path-for "Workbook not found.")))
 
+(defn- extract-version-id [etag]
+  (second (str/split etag #";")))
+
+(defn- neg-media-type [req]
+  (-> {:request req
+       :resource {:available-media-types
+                  (constantly (:available-media-types (resource-defaults)))}}
+      (negotiate-media-type)
+      (:representation)
+      (:media-type)))
+
+(defn- etag-header [etag-value]
+  {"etag" (str "\"" etag-value "\"")})
+
 (defn put-workbook-handler [path-for]
   (fnk [conn [:params id] headers :as req]
     (if-let [new-version-id (:version-id (:params req))]
-      (if-let [old-version-id (some-> (headers "if-match") decode-etag)]
+      (if-let [old-version-id (some-> (headers "if-match")
+                                      decode-etag
+                                      extract-version-id)]
         (try
           (let [wb (api/update-workbook! conn id old-version-id new-version-id)]
             {:status 204
-             :headers {"etag" (str "\"" (:version/id (:workbook/head wb)) "\"")}})
+             :headers (etag-header (workbook-etag path-for (neg-media-type req) wb))})
           (catch Exception e
             (condp = (:type (ex-data e))
               :lens.schema/workbook-not-found (error path-for 404 "Workbook not found.")
               :lens.schema/precondition-failed (error path-for 412 "Precondition failed.")
-              :lens.schema/version-not-found (error path-for 422 "Version doesn't exist."))))
+              :lens.schema/version-not-found (error path-for 422 "Version doesn't exist.")
+              (throw e))))
         (error path-for 428 "Precondition required."))
       (error path-for 422 "Version id is missing."))))
 
@@ -172,7 +201,7 @@
 
 (defn find-workbook-handler [path-for]
   (resource
-    (resource-defaults)
+    (resource-defaults :cache-control "no-cache")
 
     :processable?
     (fnk [[:request params]]
@@ -183,7 +212,10 @@
       (when-let [workbook (api/workbook db id)]
         {:workbook workbook}))
 
-    :etag (fn [{:keys [workbook]}] (-> workbook :workbook/head :version/id))
+    :etag
+    (fnk [[:representation media-type] & more]
+      (when-let [workbook (:workbook more)]
+        (workbook-etag path-for media-type workbook)))
 
     :handle-ok
     (fnk [workbook] (render-workbook path-for workbook))
