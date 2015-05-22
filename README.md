@@ -39,6 +39,12 @@ environment vars specified above and just type `foreman start`.
 Running a REPL will load the user namespace. Use `(startup)` to start the server
 and `(reset)` to reload after code changes.
 
+If you use [Intellij IDEA][5] with [Cursive][6], you can add a Datomic stub JAR
+to your project dependencies as described [here][7]. The stub will provide
+signatures and documentation for the Datomic API functions. I can't add the
+stub dependency to the project.clj file because it is currently not available on
+Clojars. I opened an issue [here][8].
+
 ## The Concept behind Workbooks
  
 Workbooks are collections of queries. Queries are the heart of Lens. Because
@@ -98,3 +104,7 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [2]: https://github.com/ddollar/foreman
 [3]: https://github.com/alexanderkiel/shortid
 [4]: https://github.com/alexanderkiel/shortid/releases
+[5]: https://www.jetbrains.com/idea/
+[6]: https://cursiveclojure.com
+[7]: https://cursiveclojure.com/userguide/support.html
+[8]: https://github.com/cursiveclojure/cursive/issues/896
