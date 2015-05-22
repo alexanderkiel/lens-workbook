@@ -2,6 +2,8 @@ __This software is ALPHA, lacks documentation and has to be deployed in conjunct
 
 # Lens Workbook Service
 
+[![Build Status](https://travis-ci.org/alexanderkiel/lens-workbook.svg?branch=master)](https://travis-ci.org/alexanderkiel/lens-workbook)
+
 A workbook storage service for Lens.
 
 ## Usage with Leiningen
