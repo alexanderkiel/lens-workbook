@@ -36,6 +36,9 @@
   (startup)
   (reset))
 
+(defn create-database []
+  (d/create-database (:db-uri system)))
+
 (defn connect []
   (d/connect (:db-uri system)))
 
@@ -58,6 +61,7 @@
        (reduce +)))
 
 (comment
+  (create-database)
   (load-schema)
   (def conn (connect))
   (api/create-standard-workbook conn)
