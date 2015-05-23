@@ -43,7 +43,7 @@ warehouse container linking them all together:
 
     docker run --name lens-workbook-db-vol akiel/lens-workbook:db-latest
     docker run -d --volumes-from lens-workbook-db-vol -e ALT_HOST=lens-workbook-db --name lens-workbook-db akiel/datomic-free
-    docker run -d -p 8080:8080 --link lens-workbook-db:db --name lens-workbook akiel/lens-workbook
+    docker run -d -p 8080:80 --link lens-workbook-db:db --name lens-workbook akiel/lens-workbook
 
 After starting all containers, a `curl http://localhost:8080` should show the
 service document of Lens Workbook. 
