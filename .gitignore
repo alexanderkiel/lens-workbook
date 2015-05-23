@@ -1,11 +1,6 @@
-/target
-/.idea
-/classes
-/checkouts
-pom.xml
-pom.xml.asc
-*.jar
-*.iml
+/target/
 /.lein-*
 /.nrepl-port
 /.env
+/*.iml
+/.idea/
