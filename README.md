@@ -1,10 +1,11 @@
-__This software is ALPHA, lacks documentation and has to be deployed in conjunction with other Lens modules.__
+__Please start at the [Top-Level Lens Repo][9].__
 
 # Lens Workbook Service
 
 [![Build Status](https://travis-ci.org/alexanderkiel/lens-workbook.svg?branch=master)](https://travis-ci.org/alexanderkiel/lens-workbook)
 
-A workbook storage service for Lens.
+The workbook storage service of Lens system which is one of several backend
+services.
 
 ## Usage with Leiningen
 
@@ -114,11 +115,12 @@ Copyright © 2015 Alexander Kiel
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
-[1]: https://github.com/alexanderkiel/lens-auth
-[2]: https://github.com/ddollar/foreman
-[3]: https://github.com/alexanderkiel/shortid
-[4]: https://github.com/alexanderkiel/shortid/releases
-[5]: https://www.jetbrains.com/idea/
-[6]: https://cursiveclojure.com
-[7]: https://cursiveclojure.com/userguide/support.html
-[8]: https://github.com/cursiveclojure/cursive/issues/896
+[1]: <https://github.com/alexanderkiel/lens-auth>
+[2]: <https://github.com/ddollar/foreman>
+[3]: <https://github.com/alexanderkiel/shortid>
+[4]: <https://github.com/alexanderkiel/shortid/releases>
+[5]: <https://www.jetbrains.com/idea/>
+[6]: <https://cursiveclojure.com>
+[7]: <https://cursiveclojure.com/userguide/support.html>
+[8]: <https://github.com/cursiveclojure/cursive/issues/896>
+[9]: <https://github.com/alexanderkiel/lens>
