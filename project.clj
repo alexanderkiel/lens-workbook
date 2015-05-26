@@ -1,6 +1,8 @@
 (defproject lens-workbook "0.1-SNAPSHOT"
   :description "A workbook storage service for Lens."
   :url "https://github.com/alexanderkiel/lens-workbook"
+  :license {:name "Eclipse"
+            :url "http://www.eclipse.org/legal/epl-v10.html"}
 
   :min-lein-version "2.0.0"
 
