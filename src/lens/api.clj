@@ -3,8 +3,20 @@
             [clojure.string :as str]
             [datomic.api :as d]
             [lens.util :refer [uuid? entity?]]
-            [lens.util :as util])
+            [lens.util :as util :refer [Nat]]
+            [schema.core :as s :refer [Str]])
   (:import [java.util.concurrent ExecutionException]))
+
+;; ---- Schema ----------------------------------------------------------------
+
+(def Workbook
+  (s/pred :workbook/id))
+
+(def Version
+  (s/pred :version/id))
+
+(def User
+  (s/pred :user/id))
 
 ;; ---- Single Accessors ------------------------------------------------------
 
@@ -71,7 +83,7 @@
     (catch ExecutionException e (throw (.getCause e)))
     (catch Exception e (throw e))))
 
-(defn update-workbook!
+(s/defn update-workbook! :- Workbook
   "Updates the workbook to point to the given version.
 
   Returns the workbook based on the new database. Checks that the old version is
@@ -79,12 +91,12 @@
   if not. Throws :lens.schema/workbook-not-found if the workbook doesn't exist.
   Throws :lens.schema/version-not-found if the new version does not exist.
   Workbook Id is from :workbook/id and version ids are from :version/id."
-  [conn workbook-id old-version-id new-version-id]
+  [conn workbook-id :- Str old-version-id :- Str new-version-id :- Str]
   (let [r (transact conn [[:workbook.fn/update workbook-id old-version-id
                            new-version-id]])]
     (d/entity (:db-after r) [:workbook/id workbook-id])))
 
-(defn create-private-workbook!
+(s/defn create-private-workbook! :- Workbook
   "Creates a new private workbook with name for the user with id.
 
   Creates the user if it does not exist. The new workbook will have one initial
@@ -94,44 +106,32 @@
    :post [(:workbook/id %)]}
   (create conn (fn [tid] [[:workbook.fn/create-private tid user-id name]])))
 
-(defn add-query
+(s/defn add-query :- Version
   "Adds a new query to a copy of the given version."
-  [conn version]
-  {:pre [(:version/id version)]
-   :post [(:version/id %)]}
+  [conn version :- Version]
   (create conn (fn [tid] [[:version.fn/add-query tid (:db/id version)]])))
 
-(defn remove-query
+(s/defn remove-query :- Version
   "Removes the query at idx from a copy of the given version."
-  [conn version idx]
-  {:pre [(:version/id version) (not (neg? idx))]
-   :post [(:version/id %)]}
+  [conn version :- Version idx :- Nat]
   (create conn (fn [tid] [[:version.fn/remove-query tid (:db/id version) idx]])))
 
-(defn duplicate-query
+(s/defn duplicate-query :- Version
   "Duplicates the query at idx of the given version and insert the duplicate
   after the original in a copy of the given version."
-  [conn version idx]
-  {:pre [(:version/id version) (not (neg? idx))]
-   :post [(:version/id %)]}
+  [conn version :- Version idx :- Nat]
   (create conn (fn [tid] [[:version.fn/duplicate-query tid (:db/id version) idx]])))
 
-(defn add-query-cell
+(s/defn add-query-cell :- Version
   "Adds a new query cell to a copy of the given version.
 
   Term is a vector of type and id."
-  [conn version query-idx col-idx term]
-  {:pre [(:version/id version) (not (neg? query-idx)) (not (neg? col-idx))
-         (vector? term)]
-   :post [(:version/id %)]}
+  [conn version :- Version query-idx :- Nat col-idx :- Nat term :- [Str]]
   (create conn (fn [tid] [[:version.fn/add-query-cell tid (:db/id version)
                            query-idx col-idx term]])))
 
-(defn remove-query-cell
+(s/defn remove-query-cell :- Version
   "Removes a query cell from a copy of the given version."
-  [conn version query-idx col-idx term-id]
-  {:pre [(:version/id version) (not (neg? query-idx)) (not (neg? col-idx))
-         (string? term-id)]
-   :post [(:version/id %)]}
+  [conn version :- Version query-idx :- Nat col-idx :- Nat term-id :- Str]
   (create conn (fn [tid] [[:version.fn/remove-query-cell tid (:db/id version)
                            query-idx col-idx term-id]])))

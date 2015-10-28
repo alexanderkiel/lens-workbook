@@ -1,4 +1,5 @@
 (ns lens.util
+  (:require [schema.core :as s])
   (:import [datomic Entity]
            [java.util UUID]))
 
@@ -21,3 +22,8 @@
   (when linked-list
     (cons (:l/head linked-list)
           (lazy-seq (to-seq (:l/tail linked-list))))))
+
+;; ---- Schema ----------------------------------------------------------------
+
+(def Nat
+  (s/both s/Int (s/pred (comp not neg?) 'not-neg)))
