@@ -71,11 +71,16 @@
 
 ;; ---- Creations -------------------------------------------------------------
 
-(defn create [conn fn]
+(defn- create
+  "Runs a transaction and returns one new entity.
+
+  The function has to take a tempid as its only argument. The entity to be
+  returned has to be created with this tempid."
+  [conn fn]
   (let [tid (d/tempid :db.part/user)
         tx-result @(d/transact conn (fn tid))
-        db (:db-after tx-result)]
-    (d/entity db (d/resolve-tempid db (:tempids tx-result) tid))))
+        db-after (:db-after tx-result)]
+    (d/entity db-after (d/resolve-tempid db-after (:tempids tx-result) tid))))
 
 (defn transact [conn tx-data]
   (try
