@@ -150,7 +150,7 @@
 
     :post!
     (fnk [conn version]
-      {:version (api/add-query! conn version)})))
+      {:version (api/add-query conn version)})))
 
 (defn remove-query-handler [path-for]
   (resource
@@ -162,7 +162,7 @@
 
     :post!
     (fnk [conn version [:request [:params idx]]]
-      {:version (api/remove-query! conn version (util/parse-int idx))})))
+      {:version (api/remove-query conn version (util/parse-int idx))})))
 
 (defn duplicate-query-handler [path-for]
   (resource
@@ -174,7 +174,7 @@
 
     :post!
     (fnk [conn version [:request [:params idx]]]
-      {:version (api/duplicate-query! conn version (util/parse-int idx))})))
+      {:version (api/duplicate-query conn version (util/parse-int idx))})))
 
 (defn add-query-cell-handler [path-for]
   (resource
@@ -189,9 +189,9 @@
 
     :post!
     (fnk [conn version [:request [:params query-idx col-idx term-type term-id]]]
-      {:version (api/add-query-cell! conn version (util/parse-int query-idx)
-                                     (util/parse-int col-idx)
-                                     [(keyword term-type) term-id])})))
+      {:version (api/add-query-cell conn version (util/parse-int query-idx)
+                                    (util/parse-int col-idx)
+                                    [(keyword term-type) term-id])})))
 
 (defn remove-query-cell-handler [path-for]
   (resource
@@ -206,6 +206,6 @@
 
     :post!
     (fnk [conn version [:request [:params query-idx col-idx term-id]]]
-      {:version (api/remove-query-cell! conn version (util/parse-int query-idx)
-                                        (util/parse-int col-idx)
-                                        term-id)})))
+      {:version (api/remove-query-cell conn version (util/parse-int query-idx)
+                                       (util/parse-int col-idx)
+                                       term-id)})))

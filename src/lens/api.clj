@@ -94,21 +94,21 @@
    :post [(:workbook/id %)]}
   (create conn (fn [tid] [[:workbook.fn/create-private tid user-id name]])))
 
-(defn add-query!
+(defn add-query
   "Adds a new query to a copy of the given version."
   [conn version]
   {:pre [(:version/id version)]
    :post [(:version/id %)]}
   (create conn (fn [tid] [[:version.fn/add-query tid (:db/id version)]])))
 
-(defn remove-query!
+(defn remove-query
   "Removes the query at idx from a copy of the given version."
   [conn version idx]
   {:pre [(:version/id version) (not (neg? idx))]
    :post [(:version/id %)]}
   (create conn (fn [tid] [[:version.fn/remove-query tid (:db/id version) idx]])))
 
-(defn duplicate-query!
+(defn duplicate-query
   "Duplicates the query at idx of the given version and insert the duplicate
   after the original in a copy of the given version."
   [conn version idx]
@@ -116,7 +116,7 @@
    :post [(:version/id %)]}
   (create conn (fn [tid] [[:version.fn/duplicate-query tid (:db/id version) idx]])))
 
-(defn add-query-cell!
+(defn add-query-cell
   "Adds a new query cell to a copy of the given version.
 
   Term is a vector of type and id."
@@ -127,7 +127,7 @@
   (create conn (fn [tid] [[:version.fn/add-query-cell tid (:db/id version)
                            query-idx col-idx term]])))
 
-(defn remove-query-cell!
+(defn remove-query-cell
   "Removes a query cell from a copy of the given version."
   [conn version query-idx col-idx term-id]
   {:pre [(:version/id version) (not (neg? query-idx)) (not (neg? col-idx))
