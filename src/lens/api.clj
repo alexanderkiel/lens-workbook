@@ -112,23 +112,24 @@
   (create conn (fn [tid] [[:workbook.fn/create-private tid user-id name]])))
 
 (s/defn add-query :- Version
-  "Adds a new query to a copy of the given version."
+  "Returns a new version with one standard query added."
   [conn version :- Version]
   (create conn (fn [tid] [[:version.fn/add-query tid (:db/id version)]])))
 
 (s/defn remove-query :- Version
-  "Removes the query at idx from a copy of the given version."
+  "Returns a new version with the query at idx removed."
   [conn version :- Version idx :- Nat]
   (create conn (fn [tid] [[:version.fn/remove-query tid (:db/id version) idx]])))
 
 (s/defn duplicate-query :- Version
-  "Duplicates the query at idx of the given version and insert the duplicate
-  after the original in a copy of the given version."
+  "Returns a new version with the query at idx duplicated. The duplicate will be
+  inserted right after the query at idx."
   [conn version :- Version idx :- Nat]
   (create conn (fn [tid] [[:version.fn/duplicate-query tid (:db/id version) idx]])))
 
 (s/defn add-query-cell :- Version
-  "Adds a new query cell to a copy of the given version.
+  "Returns a new version with a query cell added to the query and column with
+  the given indicies.
 
   Term is a vector of type and id."
   [conn version :- Version query-idx :- Nat col-idx :- Nat term :- [Str]]
@@ -136,7 +137,8 @@
                            query-idx col-idx term]])))
 
 (s/defn remove-query-cell :- Version
-  "Removes a query cell from a copy of the given version."
+  "Returns a new version with the query cell with term-id removed at the query
+  and column with the given indicies."
   [conn version :- Version query-idx :- Nat col-idx :- Nat term-id :- Str]
   (create conn (fn [tid] [[:version.fn/remove-query-cell tid (:db/id version)
                            query-idx col-idx term-id]])))
