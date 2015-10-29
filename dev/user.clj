@@ -11,6 +11,7 @@
 (def system nil)
 
 (defn init []
+  (assert (nil? system))
   (alter-var-root #'system (constantly (system/system (system/env)))))
 
 (defn start []
