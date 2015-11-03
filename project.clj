@@ -37,14 +37,14 @@
               :global-vars {*print-length* 20}}
 
              :datomic-free
-             {:dependencies [[com.datomic/datomic-free "0.9.5173"
+             {:dependencies [[com.datomic/datomic-free "0.9.5327"
                               :exclusions [org.slf4j/slf4j-nop commons-codec
                                            com.amazonaws/aws-java-sdk
                                            joda-time]]]}
 
              :datomic-pro
              {:repositories [["my.datomic.com" "https://my.datomic.com/repo"]]
-              :dependencies [[com.datomic/datomic-pro "0.9.5173"
+              :dependencies [[com.datomic/datomic-pro "0.9.5327"
                               :exclusions [org.slf4j/slf4j-nop
                                            org.slf4j/slf4j-log4j12
                                            org.apache.httpcomponents/httpclient
