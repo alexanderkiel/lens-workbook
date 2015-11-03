@@ -3,6 +3,7 @@ __Please start at the [Top-Level Lens Repo][9].__
 # Lens Workbook Service
 
 [![Build Status](https://travis-ci.org/alexanderkiel/lens-workbook.svg?branch=master)](https://travis-ci.org/alexanderkiel/lens-workbook)
+[![Docker Pulls](https://img.shields.io/docker/pulls/akiel/lens-workbook.svg)](https://hub.docker.com/r/akiel/lens-workbook/)
 
 The workbook storage service of Lens system which is one of several backend
 services.
