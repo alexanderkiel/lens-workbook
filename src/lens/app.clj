@@ -1,6 +1,7 @@
 (ns lens.app
   (:use plumbing.core)
-  (:require [bidi.bidi :as bidi]
+  (:require [clojure.tools.logging :as log]
+            [bidi.bidi :as bidi]
             [bidi.ring :as bidi-ring]
             [io.clojure.liberator-transit]
             [ring.middleware.params :refer [wrap-params]]
@@ -23,6 +24,14 @@
       resp
       {:status 404})))
 
+(defn wrap-log [handler]
+  (fn [req]
+    (let [resp (handler req)]
+      (log/info (pr-str {:request (select-keys req [:remote-addr :request-method
+                                                    :uri :query-string :headers])
+                         :response (select-keys resp [:status :headers])}))
+      resp)))
+
 (defnk app [db-uri context-path :as opts]
   (assert (re-matches #"/(?:.*[^/])?" context-path))
   (let [routes (routes context-path)
@@ -33,4 +42,5 @@
         (wrap-cors)
         (wrap-connection db-uri)
         (wrap-keyword-params)
-        (wrap-params))))
+        (wrap-params)
+        (wrap-log))))
