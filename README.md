@@ -41,7 +41,7 @@ environment vars specified above and just type `foreman start`.
 ## Usage through Docker Container
 
 You have to start a database volume container, a database container and a 
-warehouse container linking them all together:
+workbook container linking them all together:
 
     docker run --name lens-workbook-db-vol akiel/lens-workbook:latest-db-data
     docker run -d --volumes-from lens-workbook-db-vol -e ALT_HOST=lens-workbook-db --name lens-workbook-db akiel/lens-workbook:latest-db
