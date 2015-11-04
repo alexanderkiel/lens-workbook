@@ -6,7 +6,10 @@
             [clojure.tools.namespace.repl :refer [refresh]]
             [datomic.api :as d]
             [system]
-            [lens.schema :as schema]))
+            [lens.schema :as schema]
+            [schema.core :as s]))
+
+(s/set-fn-validation! true)
 
 (def system nil)
 
