@@ -129,7 +129,7 @@
 
     (func :workbook.fn/update
       "Updates the version in the workbook.
-      
+
       Checks that the old version is still current - throws a exception with
       type ::precondition-failed if not. Throws ::workbook-not-found if the
       workbook doesn't exist. Throws ::version-not-found if the new version
@@ -154,12 +154,12 @@
 
 (def version
   "Schema of a version.
-  
+
   A version is immutable. All updating functions return always a new version
   like operations on normal immutable data structures. The :version/parent
   references the past version of a version. One can use the parent to undo a
   change in a workbook. The parent of the initial version of a workbook is nil.
-  
+
   A version has a linked list of queries. One can use the function
   :version.fn/add-query to add a new query in front of the list."
   {:attributes
@@ -203,8 +203,8 @@
         :version/parent parent}])
 
     (func :version.fn/add-query
-      "Adds a new query to a copy of the given version. Needs a tempid for the
-      new version."
+      "Creates transaction data for a new version which has one standard query
+      added to the given version. Needs a tempid for the new version."
       [db tid version]
       (let [queries (:version/queries (d/entity db version))
             new-queries #db/id[:db.part/user]
@@ -302,7 +302,7 @@
 
     (func :version.fn/remove-query-cell
       "Removes a query cell from a copy of the given version.
-      
+
       Needs a tempid for the new version."
       [db tid version query-idx col-idx term-id]
       (let [seq (fn seq [l] (when l (cons (:l/head l) (seq (:l/tail l)))))
