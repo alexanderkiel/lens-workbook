@@ -191,7 +191,7 @@
     (fnk [conn version [:request [:params query-idx col-idx term-type term-id]]]
       {:version (api/add-query-cell conn version (util/parse-int query-idx)
                                     (util/parse-int col-idx)
-                                    [(keyword term-type) term-id])})))
+                                    {:type (keyword term-type) :id term-id})})))
 
 (defn remove-query-cell-handler [path-for]
   (resource

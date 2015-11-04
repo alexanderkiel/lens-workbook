@@ -18,6 +18,10 @@
 (def User
   (s/pred :user/id))
 
+(def Term
+  {:type (s/enum :form :item-group :item :code-list-item)
+   :id Str})
+
 ;; ---- Single Accessors ------------------------------------------------------
 
 (defn workbook [db id]
@@ -132,7 +136,7 @@
   the given indicies.
 
   Term is a vector of type and id."
-  [conn version :- Version query-idx :- Nat col-idx :- Nat term :- [Str]]
+  [conn version :- Version query-idx :- Nat col-idx :- Nat term :- Term]
   (create conn (fn [tid] [[:version.fn/add-query-cell tid (:db/id version)
                            query-idx col-idx term]])))
 

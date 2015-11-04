@@ -296,8 +296,8 @@
 
          ;; Add a new cell in front of all cells of the col
          {:db/id new-cell
-          :query.cell.term/type (first term)
-          :query.cell.term/id (second term)}
+          :query.cell.term/type (:type term)
+          :query.cell.term/id (:id term)}
          [:l.fn/cons new-cells new-cell (:db/id (:query.col/cells col))]]))
 
     (func :version.fn/remove-query-cell
