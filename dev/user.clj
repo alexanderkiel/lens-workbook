@@ -45,7 +45,7 @@
 (comment
   (startup)
   (create-database)
-  (load-schema)
+  (keys (load-schema))
   )
 
 ;; Reset after making changes

@@ -115,10 +115,10 @@
       Creates the user if it does not exist. The new workbook will have one initial
       version with one query in it."
       [db tid user-id name]
-      (let [user #db/id[:db.part/user]
-            version #db/id[:db.part/user]
-            queries #db/id[:db.part/user]
-            query #db/id[:db.part/user]]
+      (let [user (d/tempid :db.part/user)
+            version (d/tempid :db.part/user)
+            queries (d/tempid :db.part/user)
+            query (d/tempid :db.part/user)]
         [[:user.fn/upsert user user-id]
          [:db/add user :user/private-workbooks tid]
          [:workbook.fn/create tid name version]
@@ -207,8 +207,8 @@
       added to the given version. Needs a tempid for the new version."
       [db tid version]
       (let [queries (:version/queries (d/entity db version))
-            new-queries #db/id[:db.part/user]
-            query #db/id[:db.part/user]]
+            new-queries (d/tempid :db.part/user)
+            query (d/tempid :db.part/user)]
         [[:version.fn/create tid version new-queries]
          [:query.fn/create query]
          [:l.fn/append new-queries (:db/id queries) query]]))
@@ -226,7 +226,7 @@
                                   (drop (inc idx) query-seq))]
         (if (empty? new-query-seq)
           [[:version.fn/create-empty tid version]]
-          (loop [q-tid #db/id[:db.part/user]
+          (loop [q-tid (d/tempid :db.part/user)
                  qs new-query-seq
                  tx-data [[:version.fn/create tid version q-tid]]]
             (if (next qs)
@@ -251,7 +251,7 @@
                                   (drop idx query-seq))]
         (if (empty? new-query-seq)
           [[:version.fn/create-empty tid version]]
-          (loop [q-tid #db/id[:db.part/user]
+          (loop [q-tid (d/tempid :db.part/user)
                  qs new-query-seq
                  tx-data [[:version.fn/create tid version q-tid]]]
             (if (next qs)
@@ -277,12 +277,12 @@
             cols (:query/cols query)
             col (nth (seq cols) col-idx)
 
-            new-queries #db/id[:db.part/user]
-            new-query #db/id[:db.part/user]
-            new-cols #db/id[:db.part/user]
-            new-col #db/id[:db.part/user]
-            new-cells #db/id[:db.part/user]
-            new-cell #db/id[:db.part/user]]
+            new-queries (d/tempid :db.part/user)
+            new-query (d/tempid :db.part/user)
+            new-cols (d/tempid :db.part/user)
+            new-col (d/tempid :db.part/user)
+            new-cells (d/tempid :db.part/user)
+            new-cell (d/tempid :db.part/user)]
 
         [[:version.fn/create tid version new-queries]
 
@@ -316,10 +316,10 @@
             new-cell-seq (->> (seq (:query.col/cells col))
                               (remove #(= term-id (:query.cell.term/id %))))
 
-            new-queries #db/id[:db.part/user]
-            new-query #db/id[:db.part/user]
-            new-cols #db/id[:db.part/user]
-            new-col #db/id[:db.part/user]]
+            new-queries (d/tempid :db.part/user)
+            new-query (d/tempid :db.part/user)
+            new-cols (d/tempid :db.part/user)
+            new-col (d/tempid :db.part/user)]
 
         (into
           [[:version.fn/create tid version new-queries]
@@ -332,7 +332,7 @@
            [:l.fn/update new-cols (:db/id cols) col-idx new-col]]
           (if (empty? new-cell-seq)
             [[:query.col.fn/create new-col]]
-            (loop [tid #db/id[:db.part/user]
+            (loop [tid (d/tempid :db.part/user)
                    cells new-cell-seq
                    tx-data [{:db/id new-col :query.col/cells tid}]]
               (if (next cells)
@@ -384,12 +384,12 @@
    [(func :query.fn/create
       ""
       [_ tid]
-      (let [cols #db/id[:db.part/user]
-            cols-t1 #db/id[:db.part/user]
-            cols-t2 #db/id[:db.part/user]
-            col-1 #db/id[:db.part/user]
-            col-2 #db/id[:db.part/user]
-            col-3 #db/id[:db.part/user]]
+      (let [cols (d/tempid :db.part/user)
+            cols-t1 (d/tempid :db.part/user)
+            cols-t2 (d/tempid :db.part/user)
+            col-1 (d/tempid :db.part/user)
+            col-2 (d/tempid :db.part/user)
+            col-3 (d/tempid :db.part/user)]
         [{:db/id tid :query/cols cols}
          [:query.col.fn/create col-1]
          [:query.col.fn/create col-2]

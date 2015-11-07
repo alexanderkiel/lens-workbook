@@ -33,7 +33,8 @@
              :dev-common
              {:source-paths ["dev"]
               :dependencies [[org.clojure/tools.namespace "0.2.4"]
-                             [criterium "0.4.3"]]
+                             [criterium "0.4.3"]
+                             [org.clojure/test.check "0.8.2"]]
               :global-vars {*print-length* 20}}
 
              :datomic-free
