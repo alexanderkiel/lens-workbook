@@ -54,8 +54,8 @@
                      [:l.fn/cons (tid -1) (tid -2) nil]])
           list (resolve-tid res (tid -1))
           res (with (:db-after res)
-                    [{:db/id (tid -3) :query/name "Q2"}
-                     [:l.fn/append (tid -1) (:db/id list) (tid -3)]])
+                    [{:db/id (tid -2) :query/name "Q2"}
+                     [:l.fn/append (tid -1) (:db/id list) (tid -2)]])
           list (resolve-tid res (tid -1))]
       (is (= ["Q1" "Q2"] (map :query/name (to-seq list)))))))
 
@@ -65,8 +65,8 @@
                      [:l.fn/cons (tid -1) (tid -2) nil]])
           list (resolve-tid res (tid -1))
           res (with (:db-after res)
-                    [{:db/id (tid -3) :query/name "X"}
-                     [:l.fn/update (tid -1) (:db/id list) 0 (tid -3)]])
+                    [{:db/id (tid -2) :query/name "X"}
+                     [:l.fn/update (tid -1) (:db/id list) 0 (tid -2)]])
           list (resolve-tid res (tid -1))]
       (is (= ["X"] (map :query/name (to-seq list))))))
 
@@ -77,8 +77,8 @@
                      [:l.fn/cons (tid -4) (tid -3) nil]])
           list (resolve-tid res (tid -1))
           res (with (:db-after res)
-                    [{:db/id (tid -3) :query/name "X"}
-                     [:l.fn/update (tid -1) (:db/id list) 0 (tid -3)]])
+                    [{:db/id (tid -2) :query/name "X"}
+                     [:l.fn/update (tid -1) (:db/id list) 0 (tid -2)]])
           list (resolve-tid res (tid -1))]
       (is (= ["X" "Q2"] (map :query/name (to-seq list))))))
 
