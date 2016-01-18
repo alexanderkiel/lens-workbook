@@ -2,9 +2,10 @@
   (:use plumbing.core)
   (:require [liberator.core :refer [resource]]
             [liberator.representation :refer [as-response]]
-            [lens.handler.util :refer :all]
+            [lens.handler.util :as hu]
             [lens.api :as api]
-            [lens.util :as util]))
+            [lens.util :as util :refer [Nat]]
+            [schema.core :refer [Int Str Any]]))
 
 (defn render-query-cell [cell]
   {:type (:query.cell.term/type cell)
@@ -31,63 +32,76 @@
     links))
 
 (defn add-query-form [path-for version]
-  {:action (path-for :add-query-handler :id (:version/id version))
-   :method "POST"
-   :title "Add Query"})
+  {:href (path-for :add-query-handler :id (:version/id version))
+   :label "Add Query"
+   :desc "Creates a new version with one query added."})
 
 (defn remove-query-form [path-for version]
-  {:action (path-for :remove-query-handler :id (:version/id version))
-   :method "POST"
+  {:href (path-for :remove-query-handler :id (:version/id version))
+   :label "Remove Query"
+   :desc "Creates a new version with the query at idx removed."
    :params
    {:idx
-    {:type :long
-     :description "The index of the query in the list of queries."}}
-   :title "Remove Query"})
+    {:type Int
+     :label "Index"
+     :desc "The index of the query in the list of queries."}}})
 
 (defn duplicate-query-form [path-for version]
-  {:action (path-for :duplicate-query-handler :id (:version/id version))
-   :method "POST"
+  {:href (path-for :duplicate-query-handler :id (:version/id version))
+   :label "Duplicate Query"
+   :desc "Creates a new version with the query at idx duplicated."
    :params
    {:idx
-    {:type :long
-     :description "The index of the query in the list of queries."}}
-   :title "Duplicate Query"})
+    {:type Int
+     :label "Index"
+     :desc "The index of the query in the list of queries."}}})
 
 (defn add-query-cell-form [path-for version]
-  {:action (path-for :add-query-cell-handler :id (:version/id version))
-   :method "POST"
-   :title "Add Query Cell"
+  {:href (path-for :add-query-cell-handler :id (:version/id version))
+   :label "Add Query Cell"
+   :desc "Creates a new version with a query cell added."
    :params
    {:query-idx
-    {:type :long
-     :description "The index of the query in the list of queries."}
+    {:type Int
+     :label "Query Index"
+     :desc "The index of the query in the list of queries."}
     :col-idx
-    {:type :long
-     :description "The index of the column in the list of columns of the query identified by query-idx."}
+    {:type Int
+     :label "Column Index"
+     :desc "The index of the column in the list of columns of the query identified by query-idx."}
     :term-type
-    {:type :string
-     :description "The type of the term (like form or item)."}
+    {:type (:type api/Term)
+     :label "Term Type"
+     :desc "The type of the term (like form or item)."}
     :term-id
-    {:type :string
-     :description "The id of the term (like T00001 or T00001_F0001)."}}})
+    {:type Str
+     :label "Term Id"
+     :desc "The id of the term (like T00001 or T00001_F0001)."}}})
 
 (defn remove-query-cell-form [path-for version]
-  {:action (path-for :remove-query-cell-handler :id (:version/id version))
-   :method "POST"
-   :title "Remove Query Cell"
+  {:href (path-for :remove-query-cell-handler :id (:version/id version))
+   :label "Remove Query Cell"
+   :desc "Creates a new version with a query cell removed."
    :params
    {:query-idx
-    {:type :long
-     :description "The index of the query in the list of queries."}
+    {:type Int
+     :label "Query Index"
+     :desc "The index of the query in the list of queries."}
     :col-idx
-    {:type :long
-     :description "The index of the column in the list of columns of the query identified by query-idx."}
+    {:type Int
+     :label "Column Index"
+     :desc "The index of the column in the list of columns of the query identified by query-idx."}
     :term-id
-    {:type :string
-     :description "The id of the term (like T00001 or T00001_F0001)."}}})
+    {:type Str
+     :label "Term Id"
+     :desc "The id of the term (like T00001 or T00001_F0001)."}}})
 
-(defn render-version-head [path-for version]
-  {:links
+(defnk render [version [:request path-for]]
+  {:data
+   {:id (:version/id version)
+    :queries (->> (api/queries version)
+                  (mapv #(render-query %)))}
+   :links
    (-> {:up {:href (path-for :service-document-handler)}
         :self {:href (path path-for version)}}
        (assoc-parent-link path-for version))
@@ -96,42 +110,40 @@
     :lens/remove-query (remove-query-form path-for version)
     :lens/duplicate-query (duplicate-query-form path-for version)
     :lens/add-query-cell (add-query-cell-form path-for version)
-    :lens/remove-query-cell (remove-query-cell-form path-for version)}
-   :id (:version/id version)})
+    :lens/remove-query-cell (remove-query-cell-form path-for version)}})
 
-(defn render-version [path-for version]
-  (assoc (render-version-head path-for version)
-    :queries
-    (->> (api/queries version)
-         (mapv #(render-query %)))))
-
-(defn handler [path-for]
+(def handler
   (resource
-    (resource-defaults :cache-control "max-age=86400")
+    (hu/resource-defaults :cache-control "max-age=86400")
+
+    :service-available? hu/db-available?
 
     :exists?
     (fnk [db [:request [:params id]]]
       (when-let [version (api/version db id)]
         {:version version}))
 
-    :etag (fn [{:keys [version]}] (-> version :version/id))
+    :etag (hu/etag 1)
 
-    :handle-ok
-    (fnk [version] (render-version path-for version))
+    :handle-ok render
 
     :handle-not-found
-    (error-body path-for "Version not found.")
+    (fnk [[:request path-for]]
+      (hu/error-body path-for "Version not found."))
 
     :location
-    (fnk [version] (path path-for version))))
+    (fnk [[:request path-for]]
+      (fnk [version] (path path-for version)))))
 
-(defn post-resource-defaults [path-for]
+(defn post-resource-defaults []
   (merge
-    (resource-defaults)
+    (hu/resource-defaults)
 
     {:allowed-methods [:post]
      :can-post-to-missing? false
      :respond-with-entity? true
+
+     :service-available? hu/db-available?
 
      :exists?
      (fnk [db [:request [:params id]]]
@@ -139,73 +151,98 @@
          {:version version}))
 
      :location
-     (fnk [version] (path path-for version))
+     (fnk [version [:request path-for]] (path path-for version))
 
-     :handle-created
-     (fnk [version] (render-version-head path-for version))}))
+     :handle-exception
+     (fnk [exception [:request path-for]]
+       (if (= :conflict (:type (ex-data exception)))
+         (hu/error path-for 409 (.getMessage exception))
+         (throw exception)))}))
 
-(defn add-query-handler [path-for]
+(def add-query-handler
   (resource
-    (post-resource-defaults path-for)
+    (post-resource-defaults)
 
     :post!
     (fnk [conn version]
       {:version (api/add-query conn version)})))
 
-(defn remove-query-handler [path-for]
-  (resource
-    (post-resource-defaults path-for)
+(defn- query-index-out-of-bounds [idx num-queries]
+  (ex-info (str "Index " idx " out of bounds. Number of queries is "
+                num-queries ".") {:type :conflict}))
 
-    :processable?
-    (fnk [[:request params]]
-      (and (:idx params) (re-matches #"\d+" (:idx params))))
+(defn- check-query-bounds [version query-idx]
+  (let [num-queries (count (util/to-seq (:version/queries version)))]
+    (when-not (< query-idx num-queries)
+      (throw (query-index-out-of-bounds query-idx num-queries)))))
+
+(defn- col-index-out-of-bounds [idx num-cols]
+  (ex-info (str "Index " idx " out of bounds. Number of columns is "
+                num-cols ".") {:type :conflict}))
+
+(defn- check-col-bounds [query col-idx]
+  (let [num-cols (count (api/query-cols query))]
+    (when-not (< col-idx num-cols)
+      (throw (col-index-out-of-bounds col-idx num-cols)))))
+
+(def remove-query-handler
+  (resource
+    (post-resource-defaults)
+
+    :processable? (hu/validate-params {:id Str :idx Nat Any Any})
 
     :post!
     (fnk [conn version [:request [:params idx]]]
-      {:version (api/remove-query conn version (util/parse-int idx))})))
+      (check-query-bounds version idx)
+      {:version (api/remove-query conn version idx)})))
 
-(defn duplicate-query-handler [path-for]
+(def duplicate-query-handler
   (resource
-    (post-resource-defaults path-for)
+    (post-resource-defaults)
 
-    :processable?
-    (fnk [[:request params]]
-      (and (:idx params) (re-matches #"\d+" (:idx params))))
+    :processable? (hu/validate-params {:id Str :idx Nat Any Any})
 
     :post!
     (fnk [conn version [:request [:params idx]]]
-      {:version (api/duplicate-query conn version (util/parse-int idx))})))
+      (check-query-bounds version idx)
+      {:version (api/duplicate-query conn version idx)})))
 
-(defn add-query-cell-handler [path-for]
+(def add-query-cell-handler
   (resource
-    (post-resource-defaults path-for)
+    (post-resource-defaults)
 
     :processable?
-    (fnk [[:request params]]
-      (and (:query-idx params) (:col-idx params)
-           (:term-type params) (:term-id params)
-           (re-matches #"\d+" (:query-idx params))
-           (re-matches #"\d+" (:col-idx params))))
+    (hu/validate-params
+      {:id Str
+       :query-idx Nat
+       :col-idx Nat
+       :term-type (:type api/Term)
+       :term-id (:id api/Term)
+       Any Any})
 
     :post!
     (fnk [conn version [:request [:params query-idx col-idx term-type term-id]]]
-      {:version (api/add-query-cell conn version (util/parse-int query-idx)
-                                    (util/parse-int col-idx)
-                                    {:type (keyword term-type) :id term-id})})))
+      (check-query-bounds version query-idx)
+      (check-col-bounds (nth (api/queries version) query-idx) col-idx)
+      {:version
+       (api/add-query-cell conn version query-idx col-idx
+                           {:type term-type :id term-id})})))
 
-(defn remove-query-cell-handler [path-for]
+(def remove-query-cell-handler
   (resource
-    (post-resource-defaults path-for)
+    (post-resource-defaults)
 
     :processable?
-    (fnk [[:request params]]
-      (and (:query-idx params) (:col-idx params)
-           (:term-id params)
-           (re-matches #"\d+" (:query-idx params))
-           (re-matches #"\d+" (:col-idx params))))
+    (hu/validate-params
+      {:id Str
+       :query-idx Nat
+       :col-idx Nat
+       :term-id (:id api/Term)
+       Any Any})
 
     :post!
     (fnk [conn version [:request [:params query-idx col-idx term-id]]]
-      {:version (api/remove-query-cell conn version (util/parse-int query-idx)
-                                       (util/parse-int col-idx)
+      (check-query-bounds version query-idx)
+      (check-col-bounds (nth (api/queries version) query-idx) col-idx)
+      {:version (api/remove-query-cell conn version query-idx col-idx
                                        term-id)})))

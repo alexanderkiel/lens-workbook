@@ -1,16 +1,20 @@
 (ns lens.api
   (:require [clojure.core.reducers :as r]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [datomic.api :as d]
             [lens.util :refer [uuid? entity?]]
             [lens.util :as util :refer [Nat]]
-            [schema.core :as s :refer [Str]])
+            [schema.core :as s :refer [Str Any]])
   (:import [java.util.concurrent ExecutionException]))
 
 ;; ---- Schema ----------------------------------------------------------------
 
+(defn workbook? [x]
+  (and (:workbook/id x) (:workbook/head x)))
+
 (def Workbook
-  (s/pred :workbook/id))
+  (s/constrained Any workbook?))
 
 (def Version
   (s/pred :version/id))
@@ -95,15 +99,17 @@
 (s/defn update-workbook! :- Workbook
   "Updates the workbook to point to the given version.
 
-  Returns the workbook based on the new database. Checks that the old version is
-  still current - throws a exception with type :lens.schema/precondition-failed
-  if not. Throws :lens.schema/workbook-not-found if the workbook doesn't exist.
+  Returns the workbook based on the new database. Checks in transaction that the
+  head of the workbook is still current - throws a exception with type
+  :lens.schema/precondition-failed if not. Throws
+  :lens.schema/workbook-not-found if the workbook doesn't exist.
   Throws :lens.schema/version-not-found if the new version does not exist.
   Workbook Id is from :workbook/id and version ids are from :version/id."
-  [conn workbook-id :- Str old-version-id :- Str new-version-id :- Str]
-  (let [r (transact conn [[:workbook.fn/update workbook-id old-version-id
-                           new-version-id]])]
-    (d/entity (:db-after r) [:workbook/id workbook-id])))
+  [conn workbook :- Workbook version-id :- Str]
+  (let [r (transact conn [[:workbook.fn/update (:workbook/id workbook)
+                           (-> workbook :workbook/head :version/id)
+                           version-id]])]
+    (d/entity (:db-after r) [:workbook/id (:workbook/id workbook)])))
 
 (s/defn create-private-workbook! :- Workbook
   "Creates a new private workbook with name for the user with id.
@@ -118,17 +124,20 @@
 (s/defn add-query :- Version
   "Returns a new version with one standard query added."
   [conn version :- Version]
+  (log/debug "Add query to version" (:version/id version))
   (create conn (fn [tid] [[:version.fn/add-query tid (:db/id version)]])))
 
 (s/defn remove-query :- Version
   "Returns a new version with the query at idx removed."
   [conn version :- Version idx :- Nat]
+  (log/debug "Remove query at index" idx "from version" (:version/id version))
   (create conn (fn [tid] [[:version.fn/remove-query tid (:db/id version) idx]])))
 
 (s/defn duplicate-query :- Version
   "Returns a new version with the query at idx duplicated. The duplicate will be
   inserted right after the query at idx."
   [conn version :- Version idx :- Nat]
+  (log/debug "Duplicate query at index" idx "of version" (:version/id version))
   (create conn (fn [tid] [[:version.fn/duplicate-query tid (:db/id version) idx]])))
 
 (s/defn add-query-cell :- Version
@@ -137,6 +146,7 @@
 
   Term is a vector of type and id."
   [conn version :- Version query-idx :- Nat col-idx :- Nat term :- Term]
+  (log/debug "Add query cell to version" (:version/id version))
   (create conn (fn [tid] [[:version.fn/add-query-cell tid (:db/id version)
                            query-idx col-idx term]])))
 
@@ -144,5 +154,6 @@
   "Returns a new version with the query cell with term-id removed at the query
   and column with the given indicies."
   [conn version :- Version query-idx :- Nat col-idx :- Nat term-id :- Str]
+  (log/debug "Remove query cell from version" (:version/id version))
   (create conn (fn [tid] [[:version.fn/remove-query-cell tid (:db/id version)
                            query-idx col-idx term-id]])))

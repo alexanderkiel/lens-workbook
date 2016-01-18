@@ -6,26 +6,26 @@
 
   :min-lein-version "2.0.0"
 
-  :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
-                 [org.clojure/data.json "0.2.6"]
-                 [org.clojure/tools.cli "0.3.1"]
-                 [org.clojure/tools.logging "0.2.6"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/core.async "0.2.371"]
+                 [org.clojure/tools.logging "0.3.1"]
                  [org.clojure/tools.reader "0.9.2"]
-                 [prismatic/plumbing "0.4.3"]
+                 [prismatic/plumbing "0.5.2"]
+                 [prismatic/schema "1.0.4"]
                  [http-kit "2.1.18"]
-                 [ring/ring-core "1.3.2" :exclusions [commons-codec]]
+                 [ring/ring-core "1.4.0" :exclusions [commons-codec]]
+                 [org.clojars.akiel/ring-hap "0.4"]
+                 [bidi "1.25.0"]
                  [pathetic "0.5.1"]
-                 [bidi "1.18.11" :exclusions [org.clojure/clojurescript]]
-                 [liberator "0.12.2"]
-                 [com.cognitect/transit-clj "0.8.271"]
-                 [io.clojure/liberator-transit "0.3.0"]
-                 [org.clojars.akiel/shortid "0.1"]
-                 [pandect "0.5.2"]
-                 [clj-time "0.6.0"]
-                 [clj-stacktrace "0.2.7"]
+                 [liberator "0.13"]
+                 [com.cemerick/url "0.1.1"]
+                 [org.clojars.akiel/shortid "0.1.1"]
+                 [org.clojars.akiel/digest "0.1"]
+                 [clj-time "0.9.0"]
                  [org.slf4j/slf4j-api "1.7.7"]
-                 [ch.qos.logback/logback-classic "1.1.2"]]
+                 [ch.qos.logback/logback-classic "1.1.2"]
+                 [com.stuartsierra/component "0.3.0"]
+                 [environ "1.0.1"]]
 
   :profiles {:dev [:datomic-free :dev-common :base :system :user :provided]
              :dev-pro [:datomic-pro :dev-common :base :system :user :provided]
@@ -34,6 +34,8 @@
              {:source-paths ["dev"]
               :dependencies [[org.clojure/tools.namespace "0.2.4"]
                              [criterium "0.4.3"]
+                             [juxt/iota "0.2.0"]
+                             [http-kit.fake "0.2.1"]
                              [org.clojure/test.check "0.8.2"]]
               :global-vars {*print-length* 20}}
 
@@ -49,9 +51,6 @@
                               :exclusions [org.slf4j/slf4j-nop
                                            org.slf4j/slf4j-log4j12
                                            org.apache.httpcomponents/httpclient
-                                           com.fasterxml.jackson.core/jackson-annotations
-                                           com.fasterxml.jackson.core/jackson-core
-                                           com.fasterxml.jackson.core/jackson-databind
                                            commons-codec
                                            joda-time]]
                              [com.basho.riak/riak-client "1.4.4"

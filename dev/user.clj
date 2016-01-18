@@ -5,9 +5,10 @@
             [clojure.repl :refer :all]
             [clojure.tools.namespace.repl :refer [refresh]]
             [datomic.api :as d]
-            [system]
-            [lens.schema :as schema]
-            [schema.core :as s]))
+            [com.stuartsierra.component :as comp]
+            [lens.system :refer [new-system]]
+            [schema.core :as s]
+            [environ.core :refer [env]]))
 
 (s/set-fn-validation! true)
 
@@ -15,13 +16,13 @@
 
 (defn init []
   (assert (nil? system))
-  (alter-var-root #'system (constantly (system/system (system/env)))))
+  (alter-var-root #'system (constantly (new-system env))))
 
 (defn start []
-  (alter-var-root #'system system/start))
+  (alter-var-root #'system comp/start))
 
 (defn stop []
-  (alter-var-root #'system system/stop))
+  (alter-var-root #'system comp/stop))
 
 (defn startup []
   (init)
@@ -32,20 +33,12 @@
   (stop)
   (refresh :after 'user/startup))
 
-(defn create-database []
-  (d/create-database (:db-uri system)))
-
 (defn connect []
   (d/connect (:db-uri system)))
-
-(defn load-schema []
-  (schema/load-schema (connect)))
 
 ;; Init Development
 (comment
   (startup)
-  (create-database)
-  (keys (load-schema))
   )
 
 ;; Reset after making changes
@@ -57,4 +50,9 @@
 (comment
   (def conn (connect))
   (def db (d/db conn))
+  )
+
+;; Inspect Your Environment
+(comment
+  env
   )

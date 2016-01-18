@@ -8,35 +8,30 @@ __Please start at the [Top-Level Lens Repo][9].__
 The workbook storage service of Lens system which is one of several backend
 services.
 
-## Usage with Leiningen
+## Environment
 
-To start the service with leiningen, run the following command
-
-    lein with-profile production,datomic-free trampoline run -h
-
-This prints a help of all command line options. You need to specify at least a
-database URI and a token introspection URI. The database URI has to point to a
-Datomic Free Edition Database. If you like to use the Pro Edition, you have
-to use the `datomic-pro` leiningen profile instead of the `datomic-free`
-profile. An example database URI is:
-
-    datomic:free://localhost:4334/lens-workbook
-    
-The token introspection URI has to point to the introspection endpoint of the
-[lens-auth][1] service.
-
-## Usage on Heroku Compatible PaaS
-
-This application uses the following environment vars:
+Lens workbook is a [12 Factor App][10] and uses the following environment vars:
 
 * `PORT` - the port to listen on
 * `DB_URI` - the Datomic database URI
 * `TOKEN_INTROSPECTION_URI` -  the OAuth2 token inspection URI to use
-* `CONTEXT_PATH` - an optional context path under which the workbook service runs
+* `CONTEXT_PATH` - an optional context path under which the workbook service runs. Has to be empty for root context or start with a slash but not ending with a slash.
 * `DATOMIC_EDITION` - one of `free` or `pro` with a default of `free`
 
-If you have [foreman][2] installed you can create an `.env` file listing the
-environment vars specified above and just type `foreman start`.
+## Usage with Leiningen
+
+Either set your environment according the above mentioned vars or create a `.lein-env` file containing a map like this one:
+
+```clojure
+{:db-uri "datomic:free://..."
+ :token-introspection-uri "http://..."
+ :port 5000
+ :context-path "/"}
+```
+
+To start the service with leiningen, run the following command
+
+    lein with-profile production,datomic-free trampoline run
 
 ## Usage through Docker Container
 
@@ -125,3 +120,4 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [7]: <https://cursiveclojure.com/userguide/support.html>
 [8]: <https://github.com/cursiveclojure/cursive/issues/896>
 [9]: <https://github.com/alexanderkiel/lens>
+[10]: <http://12factor.net>

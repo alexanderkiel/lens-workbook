@@ -3,8 +3,8 @@
   (:import [datomic Entity]
            [java.util UUID]))
 
-(defn parse-int [s]
-  (Integer/parseInt s))
+(defn parse-long [s]
+  (Long/parseLong s))
 
 (defn uuid? [x]
   (instance? UUID x))
@@ -26,4 +26,4 @@
 ;; ---- Schema ----------------------------------------------------------------
 
 (def Nat
-  (s/both s/Int (s/pred (comp not neg?) 'not-neg)))
+  (s/constrained s/Int (comp not neg?) 'not-neg))
